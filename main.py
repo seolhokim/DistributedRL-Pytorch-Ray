@@ -46,13 +46,14 @@ local_agents = [Worker.remote() for _ in range(n_train_processes)]
 ray.get([agent.init.remote(ActorCritic(writer, device, state_dim, action_dim, agent_args), \
                    agent_args) for agent in local_agents])
 
-
+import time
 start = time.time()
 for i in range(epoch * n_train_processes):
     result_ids = [agent.compute_gradients.remote(env_name, global_agent) for agent in local_agents]
     done_id, result_ids = ray.wait(result_ids)
 
     if i % (n_train_processes * test_cycle) == 0 :
-        print(i,'-th test performance : ', ray.get(test_agent.remote(env_name, global_agent, 1)))
-        time.sleep(1)
+        print(i,'-th test performance : ', (ray.get(test_agent.remote(env_name, global_agent, 10))))
+        #test.remote(global_agent)
+        time.sleep(3)
 print("time :", time.time() - start)
