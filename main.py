@@ -16,7 +16,7 @@ parser.add_argument("--env_name", type=str, default = 'CartPole-v1', help = 'env
 parser.add_argument("--algo", type=str, default = 'a3c', help = 'algorithm to adjust (default : a3c)')
 parser.add_argument('--epochs', type=int, default=1000, help='number of epochs, (default: 1000)')
 parser.add_argument('--num_workers', type=int, default=3, help='number of workers, (default: 3)')
-parser.add_argument('--test_cycle', type=int, default=10, help='test cycle when training, (default: 10)')
+parser.add_argument('--test_repeat', type=int, default=10, help='test repeat for mean performance, (default: 10)')
 parser.add_argument('--test_sleep', type=int, default=3, help='test sleep time when training, (default: 3)')
 parser.add_argument("--use_cuda", type=bool, default = True, help = 'cuda usage(default : True)')
 parser.add_argument('--tensorboard', type=bool, default=False, help='use_tensorboard, (default: False)')
@@ -54,11 +54,10 @@ ray.get([agent.init.remote(ActorCritic(writer, device, state_dim, action_dim, ag
                    agent_args) for agent in local_agents])
 
 start = time.time()
-for i in range(args.epochs * args.num_workers):
-    result_ids = [agent.compute_gradients.remote(args.env_name, global_agent) for agent in local_agents]
-    done_id, result_ids = ray.wait(result_ids)
+for i in range(args.num_workers):
+    [agent.compute_gradients.remote(args.env_name, global_agent, args.epochs) for agent in local_agents]
 
-    if i % (args.num_workers * args.test_cycle) == 0 :
-        print(i,'-th test performance : ', (ray.get(test_agent.remote(args.env_name, global_agent, args.test_cycle))))
-        time.sleep(args.test_sleep)
+for i in range(100):
+    print(i,'-th test performance : ', (ray.get(test_agent.remote(args.env_name, global_agent, args.test_repeat))))
+    time.sleep(args.test_sleep)
 print("time :", time.time() - start)

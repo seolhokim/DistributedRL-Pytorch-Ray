@@ -53,34 +53,34 @@ def run_env(env_name, brain, train, repeat, update_interval = 0):
 def train_network(brain, state_lst, action_lst,reward_lst, next_state, done):
     grad = brain.train_network(state_lst, action_lst,reward_lst, next_state, done)
     yield grad
+    
 #discrete
-def run_env(env_name, brain,  repeat, update_interval = 0):
+def run_env(env_name, brain, update_interval = 0):
     env = gym.make(env_name)
     score_lst = []
     if update_interval == 0:
         update_interval = env._max_episode_steps
-    for i in range(repeat):
-        score = 0
-        done = False
-        state = env.reset()
-        while not done:
-            state_lst, action_lst, reward_lst = [], [], []
-            for t in range(update_interval):
-                prob = brain.get_action(torch.from_numpy(state).float())
-                dist = Categorical(prob)
-                action = dist.sample().item()
-                next_state, reward, done, _ = env.step(action)
+    score = 0
+    done = False
+    state = env.reset()
+    while not done:
+        state_lst, action_lst, reward_lst = [], [], []
+        for t in range(update_interval):
+            prob = brain.get_action(torch.from_numpy(state).float())
+            dist = Categorical(prob)
+            action = dist.sample().item()
+            next_state, reward, done, _ = env.step(action)
 
-                state_lst.append(state)
-                action_lst.append([action])
-                reward_lst.append(reward/100.0)
-                state = next_state
-                
-                score += reward
-                if done:
-                    break
-            grad = brain.train_network(state_lst, action_lst,reward_lst, next_state, done)
-            yield grad
+            state_lst.append(state)
+            action_lst.append([action])
+            reward_lst.append(reward/100.0)
+            state = next_state
+
+            score += reward
+            if done:
+                break
+        grad = brain.train_network(state_lst, action_lst,reward_lst, next_state, done)
+        yield grad
 
 @ray.remote
 def test_agent(env_name, agent, repeat):
@@ -92,15 +92,11 @@ def test_agent(env_name, agent, repeat):
         done = False
         state = env.reset()
         while not done:
-            state_lst, action_lst, reward_lst = [], [], []
             prob = brain.get_action(torch.from_numpy(state).float())
             dist = Categorical(prob)
             action = dist.sample().item()
             next_state, reward, done, _ = env.step(action)
 
-            state_lst.append(state)
-            action_lst.append([action])
-            reward_lst.append(reward/100.0)
             state = next_state
 
             score += reward
