@@ -27,9 +27,9 @@ class ActorCritic(nn.Module):
     def v(self, x):
         return self.critic(x)
     
-    def train_network(self, state_lst, action_lst, reward_lst, next_state, done):
-        final_state = torch.tensor(next_state, dtype=torch.float)
-        R = 0.0 if done else self.v(final_state).item()
+    def train_network(self, state_lst, action_lst, reward_lst, next_state_lst, done_lst):
+        final_state = torch.tensor(next_state_lst[-1], dtype=torch.float)
+        R = 0.0 if done_lst[-1] else self.v(final_state).item()
         td_target_lst = []
         for reward in reward_lst[::-1]:
             R = self.args['gamma'] * R + reward

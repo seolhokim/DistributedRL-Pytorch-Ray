@@ -17,5 +17,5 @@ class Worker:
         for i in range(epochs):
             weights = ray.get(global_agent.get_weights.remote())
             self.brain.set_weights(weights)
-            for grad in run_env(env_name, self.brain, update_interval = self.args['update_interval']):
+            for grad in run_env(env_name, self.brain, update_interval = self.args['traj_length']):
                 global_agent.apply_gradients.remote(grad)
