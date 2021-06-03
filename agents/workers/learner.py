@@ -4,7 +4,6 @@ import torch.optim as optim
 @ray.remote
 class Learner:
     def init(self, brain, args):
-        
         self.brain = brain
         self.args = args
         self.optimizer = optim.Adam(self.brain.parameters(), lr = self.args['lr'])
