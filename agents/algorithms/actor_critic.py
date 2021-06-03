@@ -38,7 +38,7 @@ class ActorCritic(nn.Module):
 
         state_batch, action_batch, td_target = torch.tensor(state_lst, dtype=torch.float), torch.tensor(action_lst), \
             torch.tensor(td_target_lst)
-        if self.args.advantage == True :
+        if self.args['advantage'] == True :
             advantage = td_target - self.v(state_batch)
         else :
             advantage = td_target

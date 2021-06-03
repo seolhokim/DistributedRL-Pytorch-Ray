@@ -27,7 +27,6 @@ def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.01
         state = env.reset()
     else:
         state = env.state
-    next_state, reward, done, _ = env.step(0)
     for t in range(traj_length):
         prob = brain.get_action(torch.from_numpy(state).float())
         dist = Categorical(prob)
@@ -59,7 +58,7 @@ def train_agent(env_name, global_agent, brain, traj_length = 0, reward_scaling =
         _, done, traj = run_env(env, brain, traj_length, get_traj, reward_scaling)
         state_lst, action_lst, reward_lst, next_state_lst, done_lst = traj
         
-        grad = brain.train_network(state_lst, action_lst,reward_lst, next_state_lst, done_lst)
+        grad = brain.train_network(state_lst, action_lst, reward_lst, next_state_lst, done_lst)
         yield grad
 
 @ray.remote
@@ -68,7 +67,6 @@ def test_agent(env_name, agent, repeat):
     env = gym.make(env_name)
     score_lst = []
     for i in range(repeat):
-        score = 0
         score, _, _ = run_env(env, brain)
         score_lst.append(score)
     return sum(score_lst)/repeat
