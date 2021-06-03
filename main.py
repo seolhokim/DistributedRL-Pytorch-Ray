@@ -1,59 +1,64 @@
 import ray
 import torch
 import gym
+import time
+from configparser import ConfigParser
+from argparse import ArgumentParser
 
 from agents.workers.worker import Worker
 from agents.workers.learner import Learner
 from agents.algorithms.actor_critic import ActorCritic
 from utils.utils import Dict, run_env, test_agent
-import time
-from configparser import ConfigParser
 
-# Hyperparameters
-n_train_processes = 3
-learning_rate = 3e-4
-update_interval = 500
-gamma = 0.98
-max_train_ep = 1
-epoch = 1000
-test_cycle = 10
+parser = ArgumentParser('parameters')
+
+parser.add_argument("--env_name", type=str, default = 'CartPole-v1', help = 'environment to adjust (default : CartPole-v1)')
+parser.add_argument("--algo", type=str, default = 'a3c', help = 'algorithm to adjust (default : a3c)')
+parser.add_argument('--epochs', type=int, default=1000, help='number of epochs, (default: 1000)')
+parser.add_argument('--num_workers', type=int, default=3, help='number of workers, (default: 3)')
+parser.add_argument('--test_cycle', type=int, default=10, help='test cycle when training, (default: 10)')
+parser.add_argument('--test_sleep', type=int, default=3, help='test sleep time when training, (default: 3)')
+parser.add_argument("--use_cuda", type=bool, default = True, help = 'cuda usage(default : True)')
+parser.add_argument('--tensorboard', type=bool, default=False, help='use_tensorboard, (default: False)')
+args = parser.parse_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-#if args.use_cuda == False:
-#    device = 'cpu'
-
-from torch.utils.tensorboard import SummaryWriter ##arg
-writer = SummaryWriter() ##arg
-
+if args.use_cuda == False:
+    device = 'cpu'
+    
+if args.tensorboard:
+    from torch.utils.tensorboard import SummaryWriter 
+    writer = SummaryWriter() 
+else :
+    writer = None
+    
 parser = ConfigParser()
 parser.read('config.ini')
 
-agent_args = Dict(parser,'actor_critic') ##arg
+
+agent_args = Dict(parser, args.algo) 
 
 ray.init()
 
-env_name = 'CartPole-v1'##arg
-env = gym.make(env_name) ##arg
+env = gym.make(args.env_name)
 
 ##action_dim = env.action_space.shape[0] continuous
 action_dim = env.action_space.n
-
 state_dim = env.observation_space.shape[0]
+
 global_agent = Learner.remote()
 ray.get(global_agent.init.remote(ActorCritic(writer, device, \
                                      state_dim, action_dim, agent_args), agent_args))
-local_agents = [Worker.remote() for _ in range(n_train_processes)]
+local_agents = [Worker.remote() for _ in range(args.num_workers)]
 ray.get([agent.init.remote(ActorCritic(writer, device, state_dim, action_dim, agent_args), \
                    agent_args) for agent in local_agents])
 
-import time
 start = time.time()
-for i in range(epoch * n_train_processes):
-    result_ids = [agent.compute_gradients.remote(env_name, global_agent) for agent in local_agents]
+for i in range(args.epochs * args.num_workers):
+    result_ids = [agent.compute_gradients.remote(args.env_name, global_agent) for agent in local_agents]
     done_id, result_ids = ray.wait(result_ids)
 
-    if i % (n_train_processes * test_cycle) == 0 :
-        print(i,'-th test performance : ', (ray.get(test_agent.remote(env_name, global_agent, 10))))
-        #test.remote(global_agent)
-        time.sleep(3)
+    if i % (args.num_workers * args.test_cycle) == 0 :
+        print(i,'-th test performance : ', (ray.get(test_agent.remote(args.env_name, global_agent, args.test_cycle))))
+        time.sleep(args.test_sleep)
 print("time :", time.time() - start)
