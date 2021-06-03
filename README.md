@@ -3,7 +3,8 @@
 ## Algorithm
 * A3C
   * extremely unstable
-##TODO
+
+## TODO
 * add distributed PPO
 * add Ape-x
 * add impala
