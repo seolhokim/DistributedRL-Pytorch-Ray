@@ -59,7 +59,7 @@ ray.get([agent.init.remote(ActorCritic(writer, device, state_dim, action_dim, ag
 
 #train
 start = time.time()
-[agent.compute_gradients.remote(args.env_name, global_agent, args.epochs) for agent in local_agents]
+[agent.train_agent.remote(args.env_name, global_agent, args.epochs) for agent in local_agents]
 
 for i in range(args.test_num):
     print(i,'-th test performance : ', (ray.get(test_agent.remote(args.env_name, global_agent, args.test_repeat))))
