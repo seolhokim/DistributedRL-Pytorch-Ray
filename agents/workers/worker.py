@@ -19,4 +19,4 @@ class Worker:
     def compute_gradients(self, env_name, global_agent, epochs):
         for i in range(epochs):
             for grad in train_agent(env_name, global_agent, self.brain, self.args['traj_length']):
-                (global_agent.apply_gradients.remote(grad))
+                global_agent.apply_gradients.remote(grad)

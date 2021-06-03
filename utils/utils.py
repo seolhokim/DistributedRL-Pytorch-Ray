@@ -23,10 +23,10 @@ def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.01
     if traj_length == 0:
         traj_length = env._max_episode_steps
         
-    if (env.state == None) or (type(env.state) ==  tuple):
+    if (env.state == None) :
         state = env.reset()
     else:
-        state = env.state
+        state = np.array(env.state)
     for t in range(traj_length):
         prob = brain.get_action(torch.from_numpy(state).float())
         dist = Categorical(prob)
@@ -64,9 +64,9 @@ def train_agent(env_name, global_agent, brain, traj_length = 0, reward_scaling =
 @ray.remote
 def test_agent(env_name, agent, repeat):
     brain = ray.get(agent.get_brain.remote())
-    env = gym.make(env_name)
     score_lst = []
     for i in range(repeat):
+        env = gym.make(env_name)
         score, _, _ = run_env(env, brain)
         score_lst.append(score)
     return sum(score_lst)/repeat
