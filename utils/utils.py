@@ -15,57 +15,21 @@ class Dict(dict):
                 self[key] = eval(value)
     #def __getattr__(self,val):
     #    return self[val]
-'''
-#discrete
-def run_env(env_name, brain, train, repeat, update_interval = 0):
-    def train_network(brain, state_lst, action_lst,reward_lst, next_state, done):
-        grad = brain.train_network(state_lst, action_lst,reward_lst, next_state, done)
-        yield grad
-    env = gym.make(env_name)
-    score_lst = []
-    if update_interval == 0:
-        update_interval = env._max_episode_steps
-    for i in range(repeat):
-        score = 0
-        done = False
-        state = env.reset()
-        while not done:
-            state_lst, action_lst, reward_lst = [], [], []
-            for t in range(update_interval):
-                prob = brain.get_action(torch.from_numpy(state).float())
-                dist = Categorical(prob)
-                action = dist.sample().item()
-                next_state, reward, done, _ = env.step(action)
-
-                state_lst.append(state)
-                action_lst.append([action])
-                reward_lst.append(reward/100.0)
-                state = next_state
-                
-                score += reward
-                if done:
-                    break
-            if train : 
-                return train_network(brain, state_lst, action_lst,reward_lst, next_state, done)
-        score_lst.append(score)
-    return sum(score_lst)/repeat
-'''
-def train_network(brain, state_lst, action_lst,reward_lst, next_state, done):
-    grad = brain.train_network(state_lst, action_lst,reward_lst, next_state, done)
-    yield grad
     
 #discrete
-def run_env(env_name, brain, traj_length = 0):
+def run_env(env_name, global_agent, brain, traj_length = 0):
     env = gym.make(env_name)
     score_lst = []
-    if update_interval == 0:
-        update_interval = env._max_episode_steps
+    if traj_length == 0:
+        traj_length = env._max_episode_steps
     score = 0
     done = False
     state = env.reset()
     while not done:
         state_lst, action_lst, reward_lst, next_state_lst, done_lst = [], [], [], [], []
         for t in range(traj_length):
+            weights = ray.get(global_agent.get_weights.remote())
+            brain.set_weights(weights)
             prob = brain.get_action(torch.from_numpy(state).float())
             dist = Categorical(prob)
             action = dist.sample().item()
