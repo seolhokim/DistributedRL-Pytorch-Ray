@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-
+from torch.distributions.normal import Normal
 class ActorCritic(nn.Module):
     def __init__(self, writer, device, state_dim, action_dim, args):
         super(ActorCritic, self).__init__()
@@ -21,13 +21,17 @@ class ActorCritic(nn.Module):
             prob = F.softmax(mu, -1)
             return prob
         else :
-            #continuous
-            pass
+            mu,std = self.actor(x)
+            return mu, std
+            #dist = Normal(mu,std)
+            #action = dist.sample()
+            #log_prob = dist.log_prob(action)
+            #return action, log_prob
         
     def v(self, x):
         return self.critic(x)
     
-    def train_network(self, state_lst, action_lst, reward_lst, next_state_lst, done_lst):
+    def compute_gradient(self, state_lst, action_lst, reward_lst, next_state_lst, done_lst):
         final_state = torch.tensor(next_state_lst[-1], dtype=torch.float)
         R = 0.0 if done_lst[-1] else self.v(final_state).item()
         td_target_lst = []
@@ -38,18 +42,26 @@ class ActorCritic(nn.Module):
 
         state_batch, action_batch, td_target = torch.tensor(state_lst, dtype=torch.float), torch.tensor(action_lst), \
             torch.tensor(td_target_lst)
+        
         if self.args['advantage'] == True :
             advantage = td_target - self.v(state_batch)
         else :
             advantage = td_target
-
-        prob = self.get_action(state_batch)
-        action_prob = prob.gather(1, action_batch)
-        loss = -torch.log(action_prob) * advantage.detach() + \
-            F.smooth_l1_loss(self.v(state_batch), td_target.detach())
+            
+        if self.args['discrete'] :
+            prob = self.get_action(state_batch)
+            log_prob = torch.log(prob.gather(1, action_batch))
+        else :
+            mu, std = self.get_action(state_batch)
+            dist = Normal(mu,std)
+            log_prob = dist.log_prob(action_batch).sum(1,keepdim = True)
+        
+        loss = -log_prob * advantage.detach() + \
+            F.smooth_l1_loss(self.v(state_batch), td_target.detach().float())
         loss = loss.mean()
         self.zero_grad()
         loss.backward()
+        
         return self.get_gradients()
     
     def get_weights(self):

@@ -43,10 +43,15 @@ agent_args = Dict(parser, args.algo)
 #ray init
 ray.init()
 
-#environment init
+#environment init for make agent
 env = gym.make(args.env_name)
-##action_dim = env.action_space.shape[0] continuous
-action_dim = env.action_space.n
+
+if type(env.action_space) == gym.spaces.box.Box : #Continuous
+    action_dim = env.action_space.shape[0] 
+    agent_args['discrete'] = False
+else :
+    action_dim = env.action_space.n
+    agent_args['discrete'] = True
 state_dim = env.observation_space.shape[0]
 
 #agent init
