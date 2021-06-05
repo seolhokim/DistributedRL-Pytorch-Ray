@@ -5,13 +5,21 @@ import gym
 import ray
 import numpy as np
 
+
 class Environment:
     def __init__(self,env_name):
         self.env = gym.make(env_name)
+        self.state_dim = self.env.observation_space.shape[0]
         self._max_episode_steps = self.env._max_episode_steps
         self.can_run = False
         self.state = None
         
+        if type(self.env.action_space) == gym.spaces.box.Box : #Continuous
+            self.action_dim = self.env.action_space.shape[0] 
+            self.is_discrete = False
+        else :
+            self.action_dim = self.env.action_space.n
+            self.is_discrete = True
     def reset(self):
         self.can_run = True
         self.state = self.env.reset()
@@ -97,4 +105,5 @@ def test_agent(env_name, agent, repeat):
         env = Environment(env_name)
         score, _, _ = run_env(env, brain)
         score_lst.append(score)
+    return sum(score_lst)/repeat
     return sum(score_lst)/repeat
