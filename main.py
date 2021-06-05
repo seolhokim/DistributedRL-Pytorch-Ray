@@ -8,7 +8,7 @@ from argparse import ArgumentParser
 from agents.workers.worker import Worker
 from agents.workers.learner import Learner
 from agents.algorithms.actor_critic import ActorCritic
-from utils.utils import Dict, test_agent
+from utils.utils import Dict, Environment, test_agent
 
 parser = ArgumentParser('parameters')
 
