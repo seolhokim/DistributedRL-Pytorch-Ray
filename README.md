@@ -3,7 +3,17 @@
 ## Algorithm
 * A3C
 
+## Tested Environment
+### Continuous
+* MountainCarContinuous-v0
+### Discrete
+* CartPole-v1
+
 ## TODO
+### Fix
+* ReplayBuffer copy computation
+  * When remote function is executed, numpy array becomes immutable. so I used copy function to cover that.
+### Add
 * add distributed PPO
 * add Ape-x
 * add impala
