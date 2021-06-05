@@ -1,5 +1,5 @@
 import ray
-from utils.utils import compute_gradients
+from utils.run_env import compute_gradients
 
 @ray.remote
 class Worker:

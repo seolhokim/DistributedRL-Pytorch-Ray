@@ -1,4 +1,6 @@
 from networks.network import Actor, Critic
+from utils.replaybuffer import ReplayBuffer
+from utils.utils import convert_to_tensor
 
 import torch
 import torch.nn as nn
@@ -8,6 +10,7 @@ from torch.distributions.normal import Normal
 class ActorCritic(nn.Module):
     def __init__(self, writer, device, state_dim, action_dim, args):
         super(ActorCritic, self).__init__()
+        self.device = device
         self.args = args
         self.actor = Actor(self.args['layer_num'], state_dim, action_dim,\
                            self.args['hidden_dim'], self.args['activation_function'],\
@@ -15,6 +18,11 @@ class ActorCritic(nn.Module):
         self.critic = Critic(self.args['layer_num'], state_dim, 1, \
                              self.args['hidden_dim'], self.args['activation_function'],\
                              self.args['last_activation'])
+        self.data = ReplayBuffer(action_prob_exist = False, max_size = self.args['traj_length'], state_dim = state_dim, num_action = action_dim)
+        
+    def put_data(self, transition):
+        self.data.put_data(transition)
+        
     def get_action(self, x):
         if self.args['discrete'] :
             mu,_ = self.actor(x)
@@ -27,12 +35,10 @@ class ActorCritic(nn.Module):
     def v(self, x):
         return self.critic(x)
     
-    def compute_gradient(self, state_lst, action_lst, reward_lst, next_state_lst, done_lst):
-        state = torch.tensor(state_lst, dtype = torch.float)
-        action = torch.tensor(action_lst)
-        reward = torch.tensor(reward_lst, dtype = torch.float).unsqueeze(-1)
-        next_state = torch.tensor(next_state_lst, dtype = torch.float)
-        done = torch.tensor(done_lst, dtype = torch.float).unsqueeze(-1)
+    def compute_gradient(self):
+        data = self.data.sample(shuffle = False)
+        
+        state, action, reward, next_state, done = convert_to_tensor(self.device, data['state'], data['action'], data['reward'], data['next_state'], data['done'])
         
         td = reward + (1 - done) * self.args['gamma'] * self.v(next_state)
         if self.args['advantage'] == True :
@@ -42,6 +48,7 @@ class ActorCritic(nn.Module):
         
         if self.args['discrete'] :
             prob = self.get_action(state)
+            action = action.type(torch.int64)
             log_prob = torch.log(prob.gather(1, action))
         else :
             mu, std = self.get_action(state)
@@ -53,7 +60,6 @@ class ActorCritic(nn.Module):
         self.zero_grad()
         loss.backward()
 
-        
         return self.get_gradients()
     
     def get_weights(self):
