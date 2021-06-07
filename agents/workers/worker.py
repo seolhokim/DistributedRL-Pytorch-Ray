@@ -1,5 +1,4 @@
 import ray
-from utils.run_env import compute_gradients
 from utils.environment import Environment
 
 @ray.remote
@@ -17,6 +16,6 @@ class Worker:
     def train_agent(self, env_name, global_agent, epochs):
         env = Environment(env_name)
         for i in range(epochs):
-            for grad in compute_gradients(env, global_agent, self.brain, self.args['traj_length']):
+            for grad in self.brain.compute_gradients(env, global_agent, self.args['traj_length'], self.args['reward_scaling']):
                 global_agent.apply_gradients.remote(grad)
         

@@ -1,12 +1,15 @@
 from networks.network import Actor, Critic
 from utils.replaybuffer import ReplayBuffer
 from utils.utils import convert_to_tensor
-
+from utils.run_env import run_env
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.distributions.normal import Normal
+
+import ray
+
 class ActorCritic(nn.Module):
     def __init__(self, writer, device, state_dim, action_dim, args):
         super(ActorCritic, self).__init__()
@@ -38,10 +41,21 @@ class ActorCritic(nn.Module):
     def v(self, x):
         return self.critic(x)
     
-    def compute_gradient(self):
+    def compute_gradients(self, env, global_agent, traj_length = 0, reward_scaling = 0.1):
+        get_traj = True
+        for i in range(traj_length):
+            weights = ray.get(global_agent.get_weights.remote())
+            self.set_weights(weights)
+
+            run_env(env, self, traj_length, get_traj, reward_scaling)
+            grad = self.compute_gradients_() 
+            yield grad
+            
+    def compute_gradients_(self):
         data = self.data.sample(shuffle = False)
-        state, action, reward, next_state, done = convert_to_tensor(self.device, data['state'], data['action'], data['reward'], data['next_state'], data['done'])
         
+        state, action, reward, next_state, done = convert_to_tensor(self.device, data['state'], data['action'], data['reward'], data['next_state'], data['done'])
+        print(state.shape)
         td = reward + (1 - done) * self.args['gamma'] * self.v(next_state)
         if self.args['advantage'] == True :
             advantage = td - self.v(state)

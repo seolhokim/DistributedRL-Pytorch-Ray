@@ -47,17 +47,6 @@ def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.1)
             state = next_state
     return score
 
-def compute_gradients(env, global_agent, brain, traj_length = 0, reward_scaling = 0.1):
-    get_traj = True
-    
-    for i in range(traj_length):
-        weights = ray.get(global_agent.get_weights.remote())
-        brain.set_weights(weights)
-        
-        _ = run_env(env, brain, traj_length, get_traj, reward_scaling)
-        
-        grad = brain.compute_gradient() 
-        yield grad
 
 @ray.remote
 def test_agent(env_name, agent, repeat):
