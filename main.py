@@ -16,7 +16,7 @@ parser = ArgumentParser('parameters')
 
 parser.add_argument("--env_name", type=str, default = 'CartPole-v1', help = 'environment to adjust (default : CartPole-v1)')
 parser.add_argument("--algo", type=str, default = 'a3c', help = 'algorithm to adjust (default : a3c)')
-parser.add_argument('--epochs', type=int, default=1000, help='number of epochs, (default: 1000)')
+parser.add_argument('--epochs', type=int, default=5000, help='number of epochs, (default: 5000)')
 parser.add_argument('--num_workers', type=int, default=3, help='number of workers, (default: 3)')
 parser.add_argument('--test_num', type=int, default=100, help='number of tests time while training (default: 100)')
 parser.add_argument('--test_repeat', type=int, default=10, help='test repeat for mean performance, (default: 10)')

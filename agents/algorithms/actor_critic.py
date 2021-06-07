@@ -41,13 +41,13 @@ class ActorCritic(nn.Module):
     def v(self, x):
         return self.critic(x)
     
-    def compute_gradients(self, env, global_agent, traj_length = 0, reward_scaling = 0.1):
+    def compute_gradients(self, env, global_agent, epochs, reward_scaling = 0.1):
         get_traj = True
-        for i in range(traj_length):
+        for i in range(epochs):
             weights = ray.get(global_agent.get_weights.remote())
             self.set_weights(weights)
 
-            run_env(env, self, traj_length, get_traj, reward_scaling)
+            run_env(env, self, self.args['traj_length'], get_traj, reward_scaling)
             grad = self.compute_gradients_() 
             yield grad
             
@@ -55,7 +55,7 @@ class ActorCritic(nn.Module):
         data = self.data.sample(shuffle = False)
         
         state, action, reward, next_state, done = convert_to_tensor(self.device, data['state'], data['action'], data['reward'], data['next_state'], data['done'])
-        print(state.shape)
+        
         td = reward + (1 - done) * self.args['gamma'] * self.v(next_state)
         if self.args['advantage'] == True :
             advantage = td - self.v(state)

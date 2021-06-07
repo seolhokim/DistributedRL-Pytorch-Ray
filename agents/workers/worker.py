@@ -15,7 +15,7 @@ class Worker:
     
     def train_agent(self, env_name, global_agent, epochs):
         env = Environment(env_name)
-        for i in range(epochs):
-            for grad in self.brain.compute_gradients(env, global_agent, self.args['traj_length'], self.args['reward_scaling']):
-                global_agent.apply_gradients.remote(grad)
-        
+        for grad in self.brain.compute_gradients(env, global_agent, epochs, self.args['reward_scaling']):
+            global_agent.apply_gradients.remote(grad)
+        print("finish")
+            
