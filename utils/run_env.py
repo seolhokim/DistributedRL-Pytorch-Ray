@@ -7,7 +7,7 @@ from torch.distributions.normal import Normal
 import ray
 import numpy as np
 
-def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.01):
+def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.1):
     score = 0
     transition = None
     if traj_length == 0:
@@ -41,13 +41,15 @@ def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.01
         score += reward
         if done:
             state = env.reset()
+            if not get_traj:
+                break
         else :
             state = next_state
     return score
 
-def compute_gradients(env_name, global_agent, brain, traj_length = 0, reward_scaling = 0.01):
+def compute_gradients(env, global_agent, brain, traj_length = 0, reward_scaling = 0.1):
     get_traj = True
-    env = Environment(env_name)
+    
     for i in range(traj_length):
         weights = ray.get(global_agent.get_weights.remote())
         brain.set_weights(weights)
@@ -61,8 +63,8 @@ def compute_gradients(env_name, global_agent, brain, traj_length = 0, reward_sca
 def test_agent(env_name, agent, repeat):
     brain = ray.get(agent.get_brain.remote())
     score_lst = []
+    env = Environment(env_name)
     for i in range(repeat):
-        env = Environment(env_name)
         score = run_env(env, brain)
         score_lst.append(score)
     return sum(score_lst)/repeat
