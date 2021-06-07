@@ -21,7 +21,6 @@ class ReplayBuffer():
         self.data[key] = data
         
     def put_data(self, transition):
-        
         idx = self.data_idx % self.max_size
         self.input_data(idx, 'state', transition)
         self.input_data(idx, 'action', transition)

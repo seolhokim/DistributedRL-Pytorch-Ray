@@ -18,7 +18,10 @@ class ActorCritic(nn.Module):
         self.critic = Critic(self.args['layer_num'], state_dim, 1, \
                              self.args['hidden_dim'], self.args['activation_function'],\
                              self.args['last_activation'])
-        self.data = ReplayBuffer(action_prob_exist = False, max_size = self.args['traj_length'], state_dim = state_dim, num_action = action_dim)
+        if self.args['discrete'] :
+            self.data = ReplayBuffer(action_prob_exist = False, max_size = self.args['traj_length'], state_dim = state_dim, num_action = 1)
+        else :
+            self.data = ReplayBuffer(action_prob_exist = False, max_size = self.args['traj_length'], state_dim = state_dim, num_action = action_dim)
         
     def put_data(self, transition):
         self.data.put_data(transition)
@@ -37,14 +40,13 @@ class ActorCritic(nn.Module):
     
     def compute_gradient(self):
         data = self.data.sample(shuffle = False)
-        
         state, action, reward, next_state, done = convert_to_tensor(self.device, data['state'], data['action'], data['reward'], data['next_state'], data['done'])
         
         td = reward + (1 - done) * self.args['gamma'] * self.v(next_state)
         if self.args['advantage'] == True :
             advantage = td - self.v(state)
         else :
-            advantage = td
+            advantage = self.v(state)
         
         if self.args['discrete'] :
             prob = self.get_action(state)
