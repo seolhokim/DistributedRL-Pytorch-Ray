@@ -1,4 +1,5 @@
 from abc import *
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -62,6 +63,14 @@ class Agent(AgentBase):
         for g, p in zip(gradients, self.parameters()):
             if g is not None:
                 p.grad = g
+                
+    def add_gradients(self, gradients):
+        for g, p in zip(gradients, self.parameters()):
+            if p.grad == None :
+                p.grad = torch.zeros(g.shape)
+            if g is not None:
+                p.grad += g
+                
     
 class ActorCritic(Agent):
     def __init__(self, state_dim, action_dim, args):

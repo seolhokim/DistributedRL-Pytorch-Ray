@@ -62,3 +62,5 @@ def test_agent(env_name, agent, repeat, sleep = 3):
             score = run_env(env, brain)
             score_lst.append(score)
         print("time : ", total_time, "'s, ", repeat, " means performance : ", sum(score_lst)/repeat)
+        if sleep == 0:
+            return

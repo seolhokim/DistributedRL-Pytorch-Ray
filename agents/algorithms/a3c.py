@@ -3,10 +3,8 @@ from utils.utils import convert_to_tensor, make_mini_batch
 from utils.run_env import run_env
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
 from torch.distributions.normal import Normal
-
 import ray
 
 class A3C(ActorCritic):
@@ -24,21 +22,6 @@ class A3C(ActorCritic):
             for grad in self.compute_gradients_() :
                 yield grad
                 
-    def get_gae(self, states, rewards, next_states, dones):
-        values = self.v(states).detach()
-        td_target = rewards + self.args['gamma'] * self.v(next_states) * (1 - dones)
-        delta = td_target - values
-        delta = delta.detach().cpu().numpy()
-        advantage_lst = []
-        advantage = 0.0
-        for idx in reversed(range(len(delta))):
-            if dones[idx] == 1:
-                advantage = 0.0
-            advantage = self.args['gamma'] * self.args['lambda_'] * advantage + delta[idx][0]
-            advantage_lst.append([advantage])
-        advantage_lst.reverse()
-        advantages = torch.tensor(advantage_lst, dtype=torch.float).to(self.device)
-        return values, advantages
     
     def compute_gradients_(self):
         data = self.data.sample(shuffle = False)
@@ -52,6 +35,7 @@ class A3C(ActorCritic):
         else :
             returns = rewards + self.args['gamma'] * self.v(next_states) * (1 - dones)
             advantages = returns - self.v(states)
+            
         advantages = (advantages - advantages.mean())/(advantages.std()+1e-3)
         for state, action, advantage, return_ in \
         make_mini_batch(self.args['batch_size'], states, actions, advantages, returns) :
@@ -71,3 +55,19 @@ class A3C(ActorCritic):
 
             nn.utils.clip_grad_norm_(self.parameters(), self.args['max_grad_norm'])
             yield self.get_gradients()
+            
+    def get_gae(self, states, rewards, next_states, dones):
+        values = self.v(states).detach()
+        td_target = rewards + self.args['gamma'] * self.v(next_states) * (1 - dones)
+        delta = td_target - values
+        delta = delta.detach().cpu().numpy()
+        advantage_lst = []
+        advantage = 0.0
+        for idx in reversed(range(len(delta))):
+            if dones[idx] == 1:
+                advantage = 0.0
+            advantage = self.args['gamma'] * self.args['lambda_'] * advantage + delta[idx][0]
+            advantage_lst.append([advantage])
+        advantage_lst.reverse()
+        advantages = torch.tensor(advantage_lst, dtype=torch.float).to(self.device)
+        return values, advantages

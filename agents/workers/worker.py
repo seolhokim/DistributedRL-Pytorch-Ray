@@ -14,8 +14,12 @@ class Worker:
         return self.brain.get_weights()
     
     def train_agent(self, env_name, global_agent, epochs):
+        
         env = Environment(env_name)
         for grad in self.brain.compute_gradients(env, global_agent, epochs, self.args['reward_scaling']):
-            global_agent.apply_gradients.remote(grad)
-        print("finish")
+            if self.brain.name() == 'a3c':
+                global_agent.apply_gradients.remote(grad)
+            else : #dppo
+                global_agent.add_gradients.remote(grad)
+     
             

@@ -8,6 +8,7 @@ from argparse import ArgumentParser
 from agents.workers.worker import Worker
 from agents.workers.learner import Learner
 from agents.algorithms.a3c import A3C
+from agents.algorithms.dppo import DPPO
 from utils.utils import Dict
 from utils.environment import Environment
 from utils.run_env import test_agent
@@ -52,20 +53,32 @@ action_dim = env.action_dim
 agent_args['discrete'] = env.is_discrete
 
 #agent init
+
+if args.algo == 'a3c':
+    algo = A3C
+elif args.algo == 'dppo':
+    algo = DPPO
 global_agent = Learner.remote()
-ray.get(global_agent.init.remote(A3C(writer, device, \
+ray.get(global_agent.init.remote(algo(writer, device, \
                                      state_dim, action_dim, agent_args), agent_args))
 local_agents = [Worker.remote() for _ in range(args.num_workers)]
-ray.get([agent.init.remote(A3C(writer, device, state_dim, action_dim, agent_args), \
+ray.get([agent.init.remote(algo(writer, device, state_dim, action_dim, agent_args), \
                    agent_args) for agent in local_agents])
 
 #train
 start = time.time()
-runners = [agent.train_agent.remote(args.env_name, global_agent, args.epochs) for agent in local_agents]
-(test_agent.remote(args.env_name, global_agent, args.test_repeat, args.test_sleep))
-while len(runners) :
-    done, runners = ray.wait(runners)
-
+if agent_args['asynchronous'] :
+    runners = [agent.train_agent.remote(args.env_name, global_agent, args.epochs) for agent in local_agents]
+    test_agent.remote(args.env_name, global_agent, args.test_repeat, args.test_sleep)
+    while len(runners) :
+        done, runners = ray.wait(runners)
+else :
+    for i in range(args.epochs):
+        runners = [agent.train_agent.remote(args.env_name, global_agent, args.epochs) for agent in local_agents]
+        ray.wait(runners)
+        global_agent.sum_gradients.remote()
+        (test_agent.remote(args.env_name, global_agent, args.test_repeat, 0))
+        
 print("time :", time.time() - start)
 
 #ray terminate
