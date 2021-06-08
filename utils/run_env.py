@@ -6,6 +6,7 @@ from torch.distributions.normal import Normal
 
 import ray
 import numpy as np
+import time
 
 def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.1):
     score = 0
@@ -49,11 +50,15 @@ def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.1)
     return score
 
 @ray.remote
-def test_agent(env_name, agent, repeat):
-    brain = ray.get(agent.get_brain.remote())
-    score_lst = []
-    env = Environment(env_name)
-    for i in range(repeat):
-        score = run_env(env, brain)
-        score_lst.append(score)
-    return sum(score_lst)/repeat
+def test_agent(env_name, agent, repeat, sleep = 3):
+    total_time = 0 
+    while 1 :
+        time.sleep(sleep)
+        total_time += sleep
+        brain = ray.get(agent.get_brain.remote())
+        score_lst = []
+        env = Environment(env_name)
+        for i in range(repeat):
+            score = run_env(env, brain)
+            score_lst.append(score)
+        print("time : ", total_time, "'s, ", repeat, " means performance : ", sum(score_lst)/repeat)

@@ -14,11 +14,10 @@ from utils.run_env import test_agent
 
 parser = ArgumentParser('parameters')
 
-parser.add_argument("--env_name", type=str, default = 'CartPole-v1', help = 'environment to adjust (default : CartPole-v1)')
+parser.add_argument("--env_name", type=str, default = 'MountainCarContinuous-v0', help = 'environment to adjust (default : CartPole-v1)')
 parser.add_argument("--algo", type=str, default = 'a3c', help = 'algorithm to adjust (default : a3c)')
 parser.add_argument('--epochs', type=int, default=5000, help='number of epochs, (default: 5000)')
 parser.add_argument('--num_workers', type=int, default=3, help='number of workers, (default: 3)')
-parser.add_argument('--test_num', type=int, default=100, help='number of tests time while training (default: 100)')
 parser.add_argument('--test_repeat', type=int, default=10, help='test repeat for mean performance, (default: 10)')
 parser.add_argument('--test_sleep', type=int, default=1, help='test sleep time when training, (default: 1)')
 parser.add_argument("--use_cuda", type=bool, default = True, help = 'cuda usage(default : True)')
@@ -62,11 +61,11 @@ ray.get([agent.init.remote(ActorCritic(writer, device, state_dim, action_dim, ag
 
 #train
 start = time.time()
-[agent.train_agent.remote(args.env_name, global_agent, args.epochs) for agent in local_agents]
+runners = [agent.train_agent.remote(args.env_name, global_agent, args.epochs) for agent in local_agents]
+(test_agent.remote(args.env_name, global_agent, args.test_repeat, args.test_sleep))
+while len(runners) :
+    done, runners = ray.wait(runners)
 
-for i in range(args.test_num):
-    print(i,'-th test performance : ', (ray.get(test_agent.remote(args.env_name, global_agent, args.test_repeat))))
-    time.sleep(args.test_sleep)
 print("time :", time.time() - start)
 
 #ray terminate
