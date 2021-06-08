@@ -7,7 +7,7 @@ from argparse import ArgumentParser
 
 from agents.workers.worker import Worker
 from agents.workers.learner import Learner
-from agents.algorithms.actor_critic import ActorCritic
+from agents.algorithms.a3c import A3C
 from utils.utils import Dict
 from utils.environment import Environment
 from utils.run_env import test_agent
@@ -53,10 +53,10 @@ agent_args['discrete'] = env.is_discrete
 
 #agent init
 global_agent = Learner.remote()
-ray.get(global_agent.init.remote(ActorCritic(writer, device, \
+ray.get(global_agent.init.remote(A3C(writer, device, \
                                      state_dim, action_dim, agent_args), agent_args))
 local_agents = [Worker.remote() for _ in range(args.num_workers)]
-ray.get([agent.init.remote(ActorCritic(writer, device, state_dim, action_dim, agent_args), \
+ray.get([agent.init.remote(A3C(writer, device, state_dim, action_dim, agent_args), \
                    agent_args) for agent in local_agents])
 
 #train

@@ -1,5 +1,4 @@
-from networks.network import Actor, Critic
-from utils.replaybuffer import ReplayBuffer
+from agents.algorithms.base import ActorCritic
 from utils.utils import convert_to_tensor, make_mini_batch
 from utils.run_env import run_env
 import torch
@@ -10,37 +9,12 @@ from torch.distributions.normal import Normal
 
 import ray
 
-class ActorCritic(nn.Module):
+class A3C(ActorCritic):
     def __init__(self, writer, device, state_dim, action_dim, args):
-        super(ActorCritic, self).__init__()
+        super(A3C, self).__init__(state_dim, action_dim, args)
         self.device = device
         self.args = args
-        self.actor = Actor(self.args['layer_num'], state_dim, action_dim,\
-                           self.args['hidden_dim'], self.args['activation_function'],\
-                           self.args['last_activation'],self.args['trainable_std'])
-        self.critic = Critic(self.args['layer_num'], state_dim, 1, \
-                             self.args['hidden_dim'], self.args['activation_function'],\
-                             self.args['last_activation'])
-        if self.args['discrete'] :
-            self.data = ReplayBuffer(action_prob_exist = False, max_size = self.args['traj_length'], state_dim = state_dim, num_action = 1)
-        else :
-            self.data = ReplayBuffer(action_prob_exist = False, max_size = self.args['traj_length'], state_dim = state_dim, num_action = action_dim)
-        
-    def put_data(self, transition):
-        self.data.put_data(transition)
-        
-    def get_action(self, x):
-        if self.args['discrete'] :
-            mu,_ = self.actor(x)
-            prob = F.softmax(mu, -1)
-            return prob
-        else :
-            mu,std = self.actor(x)
-            return mu, std
-        
-    def v(self, x):
-        return self.critic(x)
-    
+     
     def compute_gradients(self, env, global_agent, epochs, reward_scaling = 0.1):
         get_traj = True
         for i in range(epochs):
@@ -80,7 +54,7 @@ class ActorCritic(nn.Module):
             advantages = returns - self.v(states)
         advantages = (advantages - advantages.mean())/(advantages.std()+1e-3)
         for state, action, advantage, return_ in \
-        make_mini_batch(64, states, actions, advantages, returns) :
+        make_mini_batch(self.args['batch_size'], states, actions, advantages, returns) :
             if self.args['discrete'] :
                 prob = self.get_action(state)
                 action = action.type(torch.int64)
@@ -97,21 +71,3 @@ class ActorCritic(nn.Module):
 
             nn.utils.clip_grad_norm_(self.parameters(), self.args['max_grad_norm'])
             yield self.get_gradients()
-    
-    def get_weights(self):
-        return {k: v.cpu() for k, v in self.state_dict().items()}
-
-    def set_weights(self, weights):
-        self.load_state_dict(weights)
-
-    def get_gradients(self):
-        grads = []
-        for p in self.parameters():
-            grad = None if p.grad is None else p.grad.data.cpu()
-            grads.append(grad)
-        return grads
-
-    def set_gradients(self, gradients):
-        for g, p in zip(gradients, self.parameters()):
-            if g is not None:
-                p.grad = g
