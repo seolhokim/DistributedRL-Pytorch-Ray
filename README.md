@@ -6,9 +6,10 @@
 ## Tested Environment
 ### Continuous
 * MountainCarContinuous-v0
+* Mujoco Benchmarks(Hopper,... etc)
 ### Discrete
 * CartPole-v1
-
+* LunarLander-v2
 ## TODO
 ### Fix
 * ReplayBuffer copy computation
