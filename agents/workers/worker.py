@@ -20,6 +20,8 @@ class Worker:
             if self.brain.name() == 'a3c':
                 global_agent.apply_gradients.remote(grad)
             else : #dppo
-                global_agent.add_gradients.remote(grad)
+                ray.get(global_agent.add_gradients.remote(grad))
+                #brain = ray.get(global_agent.get_brain.remote())
+                #print(next(brain.parameters()).grad)
      
             

@@ -19,8 +19,11 @@ class Learner:
         self.brain.set_gradients(gradients)
         self.optimizer.step()
     
-    def sum_gradients(self):
+    def step_gradients(self):
         self.optimizer.step()
+        self.brain.zero_grad()
         
     def add_gradients(self, gradients):
         self.brain.add_gradients(gradients)
+    
+    
