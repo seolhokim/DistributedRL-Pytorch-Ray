@@ -1,5 +1,5 @@
 import torch
-
+import numpy as np
 def make_transition(state,action,reward,next_state,done,log_prob=None):
     transition = {}
     transition['state'] = state
@@ -9,7 +9,14 @@ def make_transition(state,action,reward,next_state,done,log_prob=None):
     transition['log_prob'] = log_prob
     transition['done'] = done
     return transition
-
+def make_mini_batch(*value):
+    mini_batch_size = value[0]
+    full_batch_size = len(value[1])
+    full_indices = np.arange(full_batch_size)
+    np.random.shuffle(full_indices)
+    for i in range(full_batch_size // mini_batch_size):
+        indices = full_indices[mini_batch_size*i : mini_batch_size*(i+1)]
+        yield [x[indices] for x in value[1:]]
 def convert_to_tensor(*value):
     device = value[0]
     return [torch.tensor(x).float().to(device) for x in value[1:]]
