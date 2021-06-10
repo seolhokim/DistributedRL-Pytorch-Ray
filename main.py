@@ -77,7 +77,7 @@ else :
         runners = [agent.train_agent.remote(args.env_name, global_agent, args.epochs) for agent in local_agents]
         ray.wait(runners)
         global_agent.step_gradients.remote()
-        (test_agent.remote(args.env_name, global_agent, args.test_repeat, 0))
+        test_agent.remote(args.env_name, global_agent, args.test_repeat, 0)
         
 print("time :", time.time() - start)
 

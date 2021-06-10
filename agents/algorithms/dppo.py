@@ -5,6 +5,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions.normal import Normal
+from torch.distributions import Categorical
+
 import ray
 
 class DPPO(ActorCritic):
@@ -39,26 +41,40 @@ class DPPO(ActorCritic):
         data = self.data.sample(shuffle = False)
         states, actions, rewards, next_states, dones = convert_to_tensor(self.device, data['state'], data['action'], data['reward'], data['next_state'], data['done'])
         
-        mu,sigma = self.get_action(states)
-        dist = torch.distributions.Normal(mu,sigma)
-        old_log_probs = dist.log_prob(actions).sum(-1,keepdim = True)
+        if self.args['discrete'] :
+            prob = self.get_action(states)
+            actions = actions.type(torch.int64)
+            dist = Categorical(prob)
+            entropy = dist.entropy() * self.args['entropy_coef']
+            old_log_probs = torch.log(prob.gather(1, actions))
+        else :
+            mu,std = self.get_action(states)
+            dist = torch.distributions.Normal(mu,std)
+            entropy = dist.entropy() * self.args['entropy_coef']
+            old_log_probs = dist.log_prob(actions).sum(1,keepdim = True)
         
         old_values, advantages = self.get_gae(states, rewards, next_states, dones)
         returns = advantages + old_values
         advantages = (advantages - advantages.mean())/(advantages.std()+1e-3)
-        
         for i in range(1):
             for state,action,old_log_prob,advantage,return_,old_value \
             in make_mini_batch(self.args['batch_size'], states, actions, \
-                                           old_log_probs,advantages,returns,old_values): 
-                curr_mu,curr_sigma = self.get_action(state)
+                                           old_log_probs,advantages,returns,old_values):
+                if self.args['discrete'] :
+                    prob = self.get_action(state)
+                    action = action.type(torch.int64)
+                    dist = Categorical(prob)
+                    entropy = dist.entropy() * self.args['entropy_coef']
+                    log_prob = torch.log(prob.gather(1, action))
+                else :
+                    mu,std = self.get_action(state)
+                    dist = torch.distributions.Normal(mu,std)
+                    entropy = dist.entropy() * self.args['entropy_coef']
+                    log_prob = dist.log_prob(action).sum(1,keepdim = True)
                 value = self.v(state).float()
-                curr_dist = torch.distributions.Normal(curr_mu,curr_sigma)
-                entropy = curr_dist.entropy() * self.args['entropy_coef']
-                curr_log_prob = curr_dist.log_prob(action).sum(1,keepdim = True)
-
+                
                 #policy clipping
-                ratio = torch.exp(curr_log_prob - old_log_prob.detach())
+                ratio = torch.exp(log_prob - old_log_prob.detach())
                 surr1 = ratio * advantage
                 surr2 = torch.clamp(ratio, 1-self.args['max_clip'], 1+self.args['max_clip']) * advantage
                 actor_loss = (-torch.min(surr1, surr2) - entropy).mean() 

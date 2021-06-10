@@ -52,7 +52,6 @@ class A3C(ActorCritic):
             loss = loss.mean()
             self.zero_grad()
             loss.backward()
-
             nn.utils.clip_grad_norm_(self.parameters(), self.args['max_grad_norm'])
             yield self.get_gradients()
             

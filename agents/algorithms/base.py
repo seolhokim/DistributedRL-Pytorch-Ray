@@ -66,7 +66,9 @@ class Agent(AgentBase):
                 
     def add_gradients(self, gradients):
         for g, p in zip(gradients, self.parameters()):
-            if p.grad == None :
+            if g is None :
+                pass
+            elif p.grad == None :
                 p.grad = torch.zeros(g.shape)
             if g is not None:
                 p.grad += g
