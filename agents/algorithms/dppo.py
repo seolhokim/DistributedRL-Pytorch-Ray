@@ -32,12 +32,10 @@ class DPPO(ActorCritic):
 
     def compute_gradients(self, env, global_agent, epochs, reward_scaling = 0.1):
         get_traj = True
-        weights = ray.get(global_agent.get_weights.remote())
-        self.set_weights(weights)
         run_env(env, self, self.args['traj_length'], get_traj, reward_scaling)
-        return self.compute_gradients_()
+        return self.compute_gradients_(global_agent)
     
-    def compute_gradients_(self):
+    def compute_gradients_(self, global_agent):
         data = self.data.sample(shuffle = False)
         states, actions, rewards, next_states, dones = convert_to_tensor(self.device, data['state'], data['action'], data['reward'], data['next_state'], data['done'])
         
@@ -56,7 +54,9 @@ class DPPO(ActorCritic):
         old_values, advantages = self.get_gae(states, rewards, next_states, dones)
         returns = advantages + old_values
         advantages = (advantages - advantages.mean())/(advantages.std()+1e-3)
-        for i in range(1):
+        for i in range(self.args['train_epoch']):
+            weights = ray.get(global_agent.get_weights.remote())
+            self.set_weights(weights)
             for state,action,old_log_prob,advantage,return_,old_value \
             in make_mini_batch(self.args['batch_size'], states, actions, \
                                            old_log_probs,advantages,returns,old_values):
@@ -84,11 +84,9 @@ class DPPO(ActorCritic):
                 value_loss = (value - return_.detach().float()).pow(2)
                 value_loss_clipped = (old_value_clipped - return_.detach().float()).pow(2)
                 critic_loss = 0.5 * self.args['critic_coef'] * torch.max(value_loss,value_loss_clipped).mean()
-                
                 loss = actor_loss + critic_loss
                 self.zero_grad()
                 loss.backward()
-
-                nn.utils.clip_grad_norm_(self.parameters(), self.args['max_grad_norm'])
-                yield self.get_gradients()
+                #nn.utils.clip_grad_norm_(self.parameters(), self.args['max_grad_norm'])
+            yield self.get_gradients()
                 

@@ -3,7 +3,8 @@ from utils.environment import Environment
 
 @ray.remote
 class Worker:
-    def init(self, brain, args):
+    def init(self, num, brain, args):
+        self.num = num
         self.brain = brain
         self.args = args
         
@@ -14,12 +15,8 @@ class Worker:
         return self.brain.get_weights()
     
     def train_agent(self, env_name, global_agent, epochs):
-        
         env = Environment(env_name)
         for grad in self.brain.compute_gradients(env, global_agent, epochs, self.args['reward_scaling']):
-            if self.brain.name() == 'a3c':
-                global_agent.apply_gradients.remote(grad)
-            else : #dppo
-                global_agent.add_gradients.remote(grad)
+            global_agent.apply_gradients.remote(self.num, grad)
      
             

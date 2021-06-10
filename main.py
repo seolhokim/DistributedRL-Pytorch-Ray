@@ -59,26 +59,24 @@ if args.algo == 'a3c':
 elif args.algo == 'dppo':
     algo = DPPO
 global_agent = Learner.remote()
-ray.get(global_agent.init.remote(algo(writer, device, \
+ray.get(global_agent.init.remote(args.num_workers, algo(writer, device, \
                                      state_dim, action_dim, agent_args), agent_args))
 local_agents = [Worker.remote() for _ in range(args.num_workers)]
-ray.get([agent.init.remote(algo(writer, device, state_dim, action_dim, agent_args), \
-                   agent_args) for agent in local_agents])
+ray.get([agent.init.remote(i, algo(writer, device, state_dim, action_dim, agent_args), \
+                   agent_args) for i, agent in enumerate(local_agents)])
 
 #train
 start = time.time()
+test_agent.remote(args.env_name, global_agent, args.test_repeat, args.test_sleep)
 if agent_args['asynchronous'] :
     runners = [agent.train_agent.remote(args.env_name, global_agent, args.epochs) for agent in local_agents]
-    test_agent.remote(args.env_name, global_agent, args.test_repeat, args.test_sleep)
     while len(runners) :
         done, runners = ray.wait(runners)
-else :
+else : #synchronous
     for i in range(args.epochs):
         runners = [agent.train_agent.remote(args.env_name, global_agent, args.epochs) for agent in local_agents]
-        ray.wait(runners)
-        global_agent.step_gradients.remote()
-        test_agent.remote(args.env_name, global_agent, args.test_repeat, 0)
-        
+        while len(runners) :
+            done, runners = ray.wait(runners)  
 print("time :", time.time() - start)
 
 #ray terminate
