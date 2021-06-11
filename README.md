@@ -2,7 +2,8 @@
 
 ## Algorithm
 * A3C
-
+* DPPO
+  * slow update
 ## Tested Environment
 ### Continuous
 * MountainCarContinuous-v0
@@ -15,7 +16,7 @@
 * ReplayBuffer copy computation
   * When remote function is executed, numpy array becomes immutable. so I used copy function to cover that.
 ### Add
-* add distributed PPO
+
 * add Ape-x
 * add impala
 * add LASER
