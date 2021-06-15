@@ -13,7 +13,6 @@ import torch.optim as optim
 from utils.utils import Dict,convert_to_tensor
 from utils.environment import Environment
 from agents.algorithms.base import Agent
-#from utils.run_env import run_env
 
 
 class Args:
@@ -34,7 +33,7 @@ parser.read('config.ini')
 agent_args = Dict(parser, args.algo)
 
 from utils.utils import make_transition
-def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.1):
+def run_env(env, brain, traj_length = 0, get_traj = False, random = False, reward_scaling = 0.1):
     score = 0
     transition = None
     if traj_length == 0:
@@ -59,14 +58,24 @@ def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.1)
             next_state, reward, done, _ = env.step(action)
         '''
         if brain.args['discrete'] :
-            action = brain.get_action(torch.from_numpy(state).float()).argmax().item()
+            if random :
+                action = env.env.action_space.sample()
+            else :
+                action = brain.get_action(torch.from_numpy(state).float()).argmax().item()
             next_state, reward, done, _ = env.step(action)
         if get_traj :
-            transition = make_transition(state,\
-                                         action,\
-                                         reward * reward_scaling,\
-                                         next_state,\
-                                         float(done))
+            '''
+(np.array([0.1,0.1,0.1,0.1]*2).reshape(2,-1)*i,\
+                           np.array([0.1]*2).reshape(2,-1)*i,\
+                           np.array([10]*2).reshape(2,-1)*i,\
+                           np.array([1,1,1,1]*2).reshape(2,-1)*i,\
+                           np.array([1]*2).reshape(2,-1))
+            '''
+            transition = make_transition(np.array(state).reshape(1,-1),\
+                                         np.array(action).reshape(1,-1),\
+                                         np.array(reward * reward_scaling).reshape(1,-1),\
+                                         np.array(next_state).reshape(1,-1),\
+                                         np.array(float(done)).reshape(1,-1))
             brain.put_data(transition)
         score += reward
         if done:
@@ -96,14 +105,11 @@ def test_agent(env_name, agent, repeat, sleep = 3):
 import numpy as np
 
 class ReplayBuffer():
-    def __init__(self,idx, max_size, state_dim, num_action):
+    def __init__(self, max_size, state_dim, num_action):
         self.max_size = max_size
         self.data_idx = 0
         self.data = {}
-        self.data['idx'] = np.zeros((self.max_size, 1)) + idx
-        
         self.data['priority'] = np.zeros((self.max_size, 1))
-        self.data['max_size'] = np.zeros((self.max_size, 1))
         self.data['state'] = np.zeros((self.max_size, state_dim))
         self.data['action'] = np.zeros((self.max_size, num_action))
         self.data['reward'] = np.zeros((self.max_size, 1))
@@ -127,6 +133,7 @@ class ReplayBuffer():
         self.input_data(idx, 'done', transition)
         #self.input_data(idx, 'priority', transition)
         
+        
         self.data_idx += data_len
         
     def sample(self, shuffle, batch_size = None):
@@ -142,7 +149,6 @@ class ReplayBuffer():
             sampled_data['next_state'] = self.data['next_state'][rand_idx]
             sampled_data['done'] = self.data['done'][rand_idx]
             sampled_data['priority'] = self.data['priority'][rand_idx]
-            sampled_data['idx'] = self.data['idx'][rand_idx]
             return sampled_data
         else:
             return self.data
@@ -154,7 +160,7 @@ learner_memory_size = 100000
 class CentralizedBuffer:
     def __init__(self, learner_memory_size, state_dim, num_action):
         self.temp_buffer = deque(maxlen=learner_memory_size)
-        self.buffer =  ReplayBuffer(0, learner_memory_size, state_dim, num_action)
+        self.buffer =  ReplayBuffer(learner_memory_size, state_dim, num_action)
         self.max_iter = 50
     def put_trajectories(self, data):
         self.temp_buffer.append(data)
@@ -173,7 +179,7 @@ class CentralizedBuffer:
         data = [self.temp_buffer.popleft() for _ in range(size)]
         for i in range(size):
             self.buffer.put_data(data[i])
-
+            
 @ray.remote
 class Learner:
     def init(self, brain, args):
@@ -214,7 +220,7 @@ class DQN(Agent):
         if self.args['discrete'] == True : 
             action_dim = 1
         if self.args['learner'] == True:
-            self.data = ReplayBuffer(0,learner_memory_size, state_dim, action_dim)
+            self.data = ReplayBuffer(learner_memory_size, state_dim, action_dim)
         else :
             pass
         self.optimizer = optim.Adam(self.actor.parameters(), lr = self.args['lr'])
@@ -256,7 +262,7 @@ class Actor:
         self.brain = brain
         self.args = args
         #run_env해서 data에 일단 꽉채운뒤부터 random으로 보내는걸로 가자.
-        run_env(env, self.brain, actor_memory_size, True)
+        run_env(env, self.brain, actor_memory_size, True, True)
     def get_brain(self):
         return self.brain
     
@@ -280,6 +286,7 @@ class Actor:
                 self.brain.set_weights(weights)
             i += 1
         print('actor finish')
+        
         
 env = Environment(args.env_name)
 state_dim = env.state_dim
@@ -305,14 +312,17 @@ def buffer_run(buffer):
     #for i in range(500):
         ray.get(buffer.stack_data.remote())
         time.sleep(0.1)
+        #buffer_t = ray.get(buffer.get_buffer.remote())
     print("buffer finished")
     
 [actor.run.remote(args.env_name, learner, buffer, args.epochs) for actor in actors]
-time.sleep(1)
 test_agent.remote(args.env_name, learner, args.test_repeat, args.test_sleep)
-time.sleep(1)
 buffer_run.remote(buffer)
+
 time.sleep(1)
 while 1 :
     learner.run.remote(buffer)
+    #brain = ray.get(learner.get_brain.remote())
+    #print(next(brain.actor.parameters())[0])
     time.sleep(3)
+    
