@@ -26,7 +26,6 @@ class Args:
         self.test_sleep = 3
         self.use_cuda = False
         self.tensorboard = False
-args = Args()        
 args = Args()
 
 parser = ConfigParser()
@@ -156,7 +155,7 @@ class CentralizedBuffer:
     def __init__(self, learner_memory_size, state_dim, num_action):
         self.temp_buffer = deque(maxlen=learner_memory_size)
         self.buffer =  ReplayBuffer(0, learner_memory_size, state_dim, num_action)
-
+        self.max_iter = 50
     def put_trajectories(self, data):
         self.temp_buffer.append(data)
     
@@ -169,25 +168,20 @@ class CentralizedBuffer:
     def sample(self,batch_size):
         return self.buffer.sample(shuffle = True, batch_size = batch_size)
     
-    def check_temp_buffer(self):
-        return len(self.temp_buffer)
-    
-    def stack_data(self,size):
+    def stack_data(self):
+        size = min(len(self.temp_buffer), self.max_iter)
         data = [self.temp_buffer.popleft() for _ in range(size)]
         for i in range(size):
             self.buffer.put_data(data[i])
-            
 
 @ray.remote
 class Learner:
     def init(self, brain, args):
         self.brain = brain
         self.args = args
+        
     def get_brain(self):
         return self.brain
-    
-    def get_deque(self): ##
-        return self.data ##
     
     def get_weights(self):
         return self.brain.get_weights()
@@ -223,7 +217,7 @@ class DQN(Agent):
             self.data = ReplayBuffer(0,learner_memory_size, state_dim, action_dim)
         else :
             pass
-        self.optimizer = optim.Adam(self.parameters(), lr = self.args['lr'])
+        self.optimizer = optim.Adam(self.actor.parameters(), lr = self.args['lr'])
         self.update_cycle = 100
         self.update_num = 0
     def get_action(self,x):
@@ -244,7 +238,7 @@ class DQN(Agent):
         q_action = q.gather(1, actions)
         next_q_max = self.target_actor(next_states)[0].max(1)[0].unsqueeze(1)
         target = rewards + (1 - dones) * self.args['gamma'] * next_q_max
-        loss = F.smooth_l1_loss(q_action, target)
+        loss = F.smooth_l1_loss(q_action, target.detach())
         
         self.optimizer.zero_grad()
         loss.backward()
@@ -287,7 +281,6 @@ class Actor:
             i += 1
         print('actor finish')
         
-        
 env = Environment(args.env_name)
 state_dim = env.state_dim
 action_dim = env.action_dim
@@ -305,17 +298,13 @@ buffer = CentralizedBuffer.remote(learner_memory_size, state_dim, 1) #action_dim
 agent_args['learner'] = False
 ray.get([agent.init.remote(idx, DQN(device, state_dim, action_dim, agent_args), agent_args) for idx, agent in enumerate(actors)])
 
-
 @ray.remote
 def buffer_run(buffer):
     print('buffer_start')
     while 1:
     #for i in range(500):
-        size = ray.get(buffer.check_temp_buffer.remote())
-        if size > 0 :
-            ray.get(buffer.stack_data.remote(size))
-        else :
-            time.sleep(0.1)
+        ray.get(buffer.stack_data.remote())
+        time.sleep(0.1)
     print("buffer finished")
     
 [actor.run.remote(args.env_name, learner, buffer, args.epochs) for actor in actors]
@@ -327,4 +316,3 @@ time.sleep(1)
 while 1 :
     learner.run.remote(buffer)
     time.sleep(3)
-    
