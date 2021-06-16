@@ -15,6 +15,7 @@ from utils.replaybuffer import ReplayBuffer, CentralizedBuffer
 from agents.algorithms.base import Agent
 from agents.algorithms.dqn import DQN
 from agents.runners.actors.apex_actor import APEXActor
+from agents.runners.learners.apex_learner import APEXLearner
 class Args:
     def __init__(self):
         self.env_name = 'CartPole-v1'#'Hopper-v2'#'CartPole-v1'#'MountainCarContinuous-v0'#"MountainCarContinuous-v0"#"Pendulum-v0"##'CartPole-v1'
@@ -31,35 +32,6 @@ parser = ConfigParser()
 parser.read('config.ini')
 
 agent_args = Dict(parser, args.algo)
-
-from utils.utils import make_transition
-    
-learner_memory_size = 100000
-
-            
-@ray.remote
-class Learner:
-    def init(self, brain, args):
-        self.brain = brain
-        self.args = args
-        
-    def get_brain(self):
-        return self.brain
-    
-    def get_weights(self):
-        return self.brain.get_weights()
-    
-    def run(self,buffer):
-        batch_size = 512
-        #while 1 :
-        print('learner start')
-        for i in range(500):
-            data = ray.get(buffer.sample.remote(batch_size))
-            if len(data) > 0:
-                self.brain.train_network(data)
-            else :
-                time.sleep(0.1)
-        print('learner finish')
         
 env = Environment(args.env_name)
 state_dim = env.state_dim
@@ -68,13 +40,13 @@ agent_args['discrete'] = True
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 ray.init()
-learner = Learner.remote()
+learner = APEXLearner.remote()
 agent_args['learner'] = True
 learner.init.remote(DQN(device, state_dim, action_dim, agent_args), agent_args)
 
 actors = [APEXActor.remote() for _ in range(args.num_actors)]
 
-buffer = CentralizedBuffer.remote(learner_memory_size, state_dim, 1) #action_dim 
+buffer = CentralizedBuffer.remote(agent_args['learner_memory_size'], state_dim, 1) #action_dim 
 agent_args['learner'] = False
 ray.get([agent.init.remote(idx, DQN(device, state_dim, action_dim, agent_args), agent_args) for idx, agent in enumerate(actors)])
 
