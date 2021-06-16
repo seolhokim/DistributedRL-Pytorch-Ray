@@ -1,12 +1,11 @@
 import torch
 import numpy as np
-def make_transition(state,action,reward,next_state,done,log_prob=None):
+def make_transition(state,action,reward,next_state,done):
     transition = {}
     transition['state'] = state
     transition['action'] = action
     transition['reward'] = reward
     transition['next_state'] = next_state
-    transition['log_prob'] = log_prob
     transition['done'] = done
     return transition
 def make_mini_batch(*value):

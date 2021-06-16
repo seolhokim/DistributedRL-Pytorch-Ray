@@ -33,11 +33,11 @@ def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.1)
             next_state, reward, done, _ = env.step(action)
         
         if get_traj :
-            transition = make_transition(state,\
-                                         action,\
-                                         reward * reward_scaling,\
-                                         next_state,\
-                                         float(done))
+            transition = make_transition(np.array(state).reshape(1,-1),\
+                                         np.array(action).reshape(1,-1),\
+                                         np.array(reward * reward_scaling).reshape(1,-1),\
+                                         np.array(next_state).reshape(1,-1),\
+                                         np.array(float(done)).reshape(1,-1))
             brain.put_data(transition)
         score += reward
         if done:

@@ -9,9 +9,10 @@ from collections import deque
 
 from configparser import ConfigParser
 import torch.optim as optim
-
+import numpy as np
 from utils.utils import Dict,convert_to_tensor
 from utils.environment import Environment
+from utils.replaybuffer import ReplayBuffer
 from agents.algorithms.base import Agent
 
 
@@ -94,66 +95,13 @@ def test_agent(env_name, agent, repeat, sleep = 3):
         print("time : ", total_time, "'s, ", repeat, " means performance : ", sum(score_lst)/repeat)
         if sleep == 0:
             return
-        
-import numpy as np
-
-class ReplayBuffer():
-    def __init__(self, max_size, state_dim, num_action):
-        self.max_size = max_size
-        self.data_idx = 0
-        self.data = {}
-        self.data['priority'] = np.zeros((self.max_size, 1))
-        self.data['state'] = np.zeros((self.max_size, state_dim))
-        self.data['action'] = np.zeros((self.max_size, num_action))
-        self.data['reward'] = np.zeros((self.max_size, 1))
-        self.data['next_state'] = np.zeros((self.max_size, state_dim))
-        self.data['done'] = np.zeros((self.max_size, 1))
-    
-    def input_data(self, idx, key, transition):
-        data_len = len(transition[key])
-        if (idx + data_len) < self.max_size :
-            self.data[key][idx : idx + data_len] = transition[key] #여기는 겹칠일이없어서 copy를안해도될듯 
-        else :
-            self.data[key][idx : self.max_size] = transition[key][: (self.max_size - idx)]
-            self.data[key][ : data_len - (self.max_size - idx)] = transition[key][(self.max_size - idx) :]
-        return data_len
-    def put_data(self, transition):
-        idx = self.data_idx % self.max_size
-        data_len = self.input_data(idx, 'state', transition)
-        self.input_data(idx, 'action', transition)
-        self.input_data(idx, 'reward', transition)
-        self.input_data(idx, 'next_state', transition)
-        self.input_data(idx, 'done', transition)
-        #self.input_data(idx, 'priority', transition)
-        
-        
-        self.data_idx += data_len
-        
-    def sample(self, shuffle, batch_size = None):
-        if shuffle :
-            sampled_data = {}
-            sample_num = min(self.max_size, self.data_idx)
-            if sample_num < batch_size:
-                return sampled_data
-            rand_idx = np.random.choice(sample_num, batch_size,replace=False)
-            sampled_data['state'] = self.data['state'][rand_idx]
-            sampled_data['action'] = self.data['action'][rand_idx]
-            sampled_data['reward'] = self.data['reward'][rand_idx]
-            sampled_data['next_state'] = self.data['next_state'][rand_idx]
-            sampled_data['done'] = self.data['done'][rand_idx]
-            sampled_data['priority'] = self.data['priority'][rand_idx]
-            return sampled_data
-        else:
-            return self.data
-    def size(self):
-        return min(self.max_size, self.data_idx)
     
 learner_memory_size = 100000
 @ray.remote
 class CentralizedBuffer:
     def __init__(self, learner_memory_size, state_dim, num_action):
         self.temp_buffer = deque(maxlen=learner_memory_size)
-        self.buffer =  ReplayBuffer(learner_memory_size, state_dim, num_action)
+        self.buffer =  ReplayBuffer(False, learner_memory_size, state_dim, num_action)
         self.max_iter = 50
     def put_trajectories(self, data):
         self.temp_buffer.append(data)
@@ -213,7 +161,7 @@ class DQN(Agent):
         if self.args['discrete'] == True : 
             action_dim = 1
         if self.args['learner'] == True:
-            self.data = ReplayBuffer(learner_memory_size, state_dim, action_dim)
+            self.data = ReplayBuffer(self.args['buffer_copy'], learner_memory_size, state_dim, action_dim)
         else :
             pass
         self.optimizer = optim.Adam(self.actor.parameters(), lr = self.args['lr'])

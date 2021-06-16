@@ -30,9 +30,9 @@ class Agent(AgentBase):
         super(Agent, self).__init__()
         self.args = args
         if self.args['discrete'] :
-            self.data = ReplayBuffer(action_prob_exist = False, max_size = self.args['traj_length'], state_dim = state_dim, num_action = 1)
-        else :
-            self.data = ReplayBuffer(action_prob_exist = False, max_size = self.args['traj_length'], state_dim = state_dim, num_action = action_dim)
+            action_dim = 1
+        
+        self.data = ReplayBuffer(buffer_copy = True, max_size = self.args['traj_length'], state_dim = state_dim, num_action = action_dim)
         
     def name(self):
         return self.__class__.__name__.lower()
