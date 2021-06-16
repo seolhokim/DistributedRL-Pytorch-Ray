@@ -5,16 +5,13 @@ import torch
 import torch.nn.functional as F
 import gym
 
-from collections import deque
-
 from configparser import ConfigParser
 import torch.optim as optim
 import numpy as np
 from utils.utils import Dict,convert_to_tensor
 from utils.environment import Environment
-from utils.replaybuffer import ReplayBuffer
+from utils.replaybuffer import ReplayBuffer, CentralizedBuffer
 from agents.algorithms.base import Agent
-
 
 class Args:
     def __init__(self):
@@ -97,29 +94,7 @@ def test_agent(env_name, agent, repeat, sleep = 3):
             return
     
 learner_memory_size = 100000
-@ray.remote
-class CentralizedBuffer:
-    def __init__(self, learner_memory_size, state_dim, num_action):
-        self.temp_buffer = deque(maxlen=learner_memory_size)
-        self.buffer =  ReplayBuffer(False, learner_memory_size, state_dim, num_action)
-        self.max_iter = 50
-    def put_trajectories(self, data):
-        self.temp_buffer.append(data)
-    
-    def get_temp_buffer(self):
-        return self.temp_buffer
-    
-    def get_buffer(self):
-        return self.buffer
-    
-    def sample(self,batch_size):
-        return self.buffer.sample(shuffle = True, batch_size = batch_size)
-    
-    def stack_data(self):
-        size = min(len(self.temp_buffer), self.max_iter)
-        data = [self.temp_buffer.popleft() for _ in range(size)]
-        for i in range(size):
-            self.buffer.put_data(data[i])
+
             
 @ray.remote
 class Learner:

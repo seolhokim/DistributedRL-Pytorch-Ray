@@ -1,4 +1,6 @@
 import numpy as np
+import ray
+from collections import deque
 
 class ReplayBuffer():
     def __init__(self, buffer_copy, max_size, state_dim, num_action):
@@ -48,3 +50,27 @@ class ReplayBuffer():
             return self.data
     def size(self):
         return min(self.max_size, self.data_idx)
+    
+@ray.remote
+class CentralizedBuffer:
+    def __init__(self, learner_memory_size, state_dim, num_action):
+        self.temp_buffer = deque(maxlen=learner_memory_size)
+        self.buffer =  ReplayBuffer(False, learner_memory_size, state_dim, num_action)
+        self.max_iter = 50
+    def put_trajectories(self, data):
+        self.temp_buffer.append(data)
+    
+    def get_temp_buffer(self):
+        return self.temp_buffer
+    
+    def get_buffer(self):
+        return self.buffer
+    
+    def sample(self,batch_size):
+        return self.buffer.sample(shuffle = True, batch_size = batch_size)
+    
+    def stack_data(self):
+        size = min(len(self.temp_buffer), self.max_iter)
+        data = [self.temp_buffer.popleft() for _ in range(size)]
+        for i in range(size):
+            self.buffer.put_data(data[i])
