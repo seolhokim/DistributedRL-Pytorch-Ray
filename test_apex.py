@@ -17,10 +17,10 @@ from agents.algorithms.base import Agent
 
 class Args:
     def __init__(self):
-        self.env_name = 'LunarLander-v2'#'Hopper-v2'#'CartPole-v1'#'MountainCarContinuous-v0'#"MountainCarContinuous-v0"#"Pendulum-v0"##'CartPole-v1'
+        self.env_name = 'CartPole-v1'#'Hopper-v2'#'CartPole-v1'#'MountainCarContinuous-v0'#"MountainCarContinuous-v0"#"Pendulum-v0"##'CartPole-v1'
         self.algo = 'apex'
         self.epochs = 1000
-        self.num_workers = 3
+        self.num_workers = 5
         self.test_repeat = 10
         self.test_sleep = 3
         self.use_cuda = False
@@ -64,13 +64,6 @@ def run_env(env, brain, traj_length = 0, get_traj = False, random = False, rewar
                 action = brain.get_action(torch.from_numpy(state).float()).argmax().item()
             next_state, reward, done, _ = env.step(action)
         if get_traj :
-            '''
-(np.array([0.1,0.1,0.1,0.1]*2).reshape(2,-1)*i,\
-                           np.array([0.1]*2).reshape(2,-1)*i,\
-                           np.array([10]*2).reshape(2,-1)*i,\
-                           np.array([1,1,1,1]*2).reshape(2,-1)*i,\
-                           np.array([1]*2).reshape(2,-1))
-            '''
             transition = make_transition(np.array(state).reshape(1,-1),\
                                          np.array(action).reshape(1,-1),\
                                          np.array(reward * reward_scaling).reshape(1,-1),\
@@ -224,7 +217,7 @@ class DQN(Agent):
         else :
             pass
         self.optimizer = optim.Adam(self.actor.parameters(), lr = self.args['lr'])
-        self.update_cycle = 100
+        self.update_cycle = 1000
         self.update_num = 0
     def get_action(self,x):
         x, _ = self.actor(x)
@@ -272,8 +265,10 @@ class Actor:
     def run(self, env_name, global_agent, global_buffer, epochs):
         env = Environment(env_name)
         batch_size = 16
-        update_cycle = 400
+        update_cycle = 1000
         print("actor start")
+        weights = ray.get(global_agent.get_weights.remote())
+        self.brain.set_weights(weights)        
         i = 0
         while 1:
         #for j in range(5000):
@@ -281,7 +276,7 @@ class Actor:
             data = self.brain.get_trajectories(batch_size)
             global_buffer.put_trajectories.remote(data)
             
-            if i % update_cycle :
+            if i % update_cycle == 0:
                 weights = ray.get(global_agent.get_weights.remote())
                 self.brain.set_weights(weights)
             i += 1
