@@ -22,8 +22,8 @@ class DQN(Agent):
         self.target_q_network.load_state_dict(self.q_network.state_dict())
         if self.args['discrete'] == True : 
             action_dim = 1
-        if self.args['learner'] == True:
-            self.data = ReplayBuffer(self.args['buffer_copy'], self.args['learner_memory_size'], state_dim, action_dim)
+        if self.args['learner'] == False:
+            self.data = ReplayBuffer(True, self.args['actor_memory_size'], state_dim, action_dim)
         else :
             pass
         self.optimizer = optim.Adam(self.q_network.parameters(), lr = self.args['lr'])
