@@ -1,5 +1,26 @@
 import torch
 import numpy as np
+from utils.environment import Environment 
+
+def run_setting(args, agent_args):
+    env = Environment(args.env_name)
+    state_dim = env.state_dim
+    action_dim = env.action_dim
+    agent_args['discrete'] = env.is_discrete
+
+    ##tensorboard
+    if args.tensorboard:
+        from torch.utils.tensorboard import SummaryWriter 
+        writer = SummaryWriter() 
+    else :
+        writer = None
+
+    ##device
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    if args.use_cuda == False:
+        device = 'cpu'
+    return args, agent_args, env, state_dim, action_dim, writer, device
+
 def make_transition(state,action,reward,next_state,done):
     transition = {}
     transition['state'] = state
