@@ -20,18 +20,25 @@ def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.1)
         state = env.reset()
     
     for t in range(traj_length):
+        if brain.args['value_based'] :
+            if brain.args['discrete'] :
+                action = brain.get_action(torch.from_numpy(state).float()).argmax().item()
+            else :
+                pass
+        else :
+            if brain.args['discrete'] :
+                prob = brain.get_action(torch.from_numpy(state).float())
+                dist = Categorical(prob)
+                action = dist.sample().item()
+                next_state, reward, done, _ = env.step(action)
+            else :#continuous
+                mu,std = brain.get_action(torch.from_numpy(state).float())
+                dist = Normal(mu,std)
+                action = dist.sample()
+                next_state, reward, done, _ = env.step(action)
+
         
-        if brain.args['discrete'] :
-            prob = brain.get_action(torch.from_numpy(state).float())
-            dist = Categorical(prob)
-            action = dist.sample().item()
-            next_state, reward, done, _ = env.step(action)
-        else :#continuous
-            mu,std = brain.get_action(torch.from_numpy(state).float())
-            dist = Normal(mu,std)
-            action = dist.sample()
-            next_state, reward, done, _ = env.step(action)
-        
+        next_state, reward, done, _ = env.step(action)
         if get_traj :
             transition = make_transition(np.array(state).reshape(1,-1),\
                                          np.array(action).reshape(1,-1),\
@@ -46,7 +53,6 @@ def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.1)
             state = env.reset()
         else :
             state = next_state
-    
     return score
 
 @ray.remote
