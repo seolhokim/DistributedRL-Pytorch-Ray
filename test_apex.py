@@ -13,7 +13,7 @@ from utils.run_env import test_agent, run_env
 from utils.environment import Environment
 from utils.replaybuffer import ReplayBuffer, CentralizedBuffer
 from agents.algorithms.base import Agent
-
+from agents.algorithms.dqn import DQN
 class Args:
     def __init__(self):
         self.env_name = 'CartPole-v1'#'Hopper-v2'#'CartPole-v1'#'MountainCarContinuous-v0'#"MountainCarContinuous-v0"#"Pendulum-v0"##'CartPole-v1'
@@ -60,56 +60,7 @@ class Learner:
                 time.sleep(0.1)
         print('learner finish')
         
-from networks.network import Actor as act
-class DQN(Agent):
-    def __init__(self, device, state_dim, action_dim, args):
-        super(DQN, self).__init__(state_dim, action_dim, args) #쓸모없는 replaybuffer있음
-        self.args = args
-        self.device = device
-        self.actor = act(self.args['layer_num'], state_dim, action_dim,\
-                   self.args['hidden_dim'], self.args['activation_function'],\
-                   self.args['last_activation'],self.args['trainable_std'])
-        self.target_actor = act(self.args['layer_num'], state_dim, action_dim,\
-                   self.args['hidden_dim'], self.args['activation_function'],\
-                   self.args['last_activation'],self.args['trainable_std'])
-        self.target_actor.load_state_dict(self.actor.state_dict())
-        if self.args['discrete'] == True : 
-            action_dim = 1
-        if self.args['learner'] == True:
-            self.data = ReplayBuffer(self.args['buffer_copy'], learner_memory_size, state_dim, action_dim)
-        else :
-            pass
-        self.optimizer = optim.Adam(self.actor.parameters(), lr = self.args['lr'])
-        self.update_cycle = 1000
-        self.update_num = 0
-    def get_action(self,x):
-        x, _ = self.actor(x)
-        return x
-    
-    def get_buffer_size(self):
-        return self.data.data_idx
-        
-    def get_trajectories(self, batch_size):
-        data = self.data.sample(True, batch_size)
-        return data
-    
-    def train_network(self, data):
-        states, actions, rewards, next_states, dones = convert_to_tensor(self.device, data['state'], data['action'], data['reward'], data['next_state'], data['done'])
-        actions = actions.type(torch.int64)
-        q = self.get_action(states)
-        q_action = q.gather(1, actions)
-        next_q_max = self.target_actor(next_states)[0].max(1)[0].unsqueeze(1)
-        target = rewards + (1 - dones) * self.args['gamma'] * next_q_max
-        loss = F.smooth_l1_loss(q_action, target.detach())
-        
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-        self.update_num += 1
-        
-        if self.update_num % self.update_cycle == 0:
-            self.target_actor.load_state_dict(self.actor.state_dict())
-            
+
 actor_memory_size = 5000
 @ray.remote
 class Actor:
