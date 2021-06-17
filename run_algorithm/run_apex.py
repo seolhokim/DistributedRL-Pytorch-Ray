@@ -2,6 +2,7 @@ import ray
 import torch
 import time
 
+from utils.utils import run_setting
 from utils.environment import Environment
 from utils.run_env import test_agent
 from utils.replaybuffer import CentralizedBuffer

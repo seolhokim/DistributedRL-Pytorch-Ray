@@ -30,14 +30,11 @@ def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.1)
                 prob = brain.get_action(torch.from_numpy(state).float())
                 dist = Categorical(prob)
                 action = dist.sample().item()
-                next_state, reward, done, _ = env.step(action)
             else :#continuous
                 mu,std = brain.get_action(torch.from_numpy(state).float())
                 dist = Normal(mu,std)
                 action = dist.sample()
-                next_state, reward, done, _ = env.step(action)
 
-        
         next_state, reward, done, _ = env.step(action)
         if get_traj :
             transition = make_transition(np.array(state).reshape(1,-1),\

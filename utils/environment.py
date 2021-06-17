@@ -15,11 +15,13 @@ class Environment:
             self.action_dim = self.env.action_space.n
             self.is_discrete = True
     def reset(self):
+        assert not self.can_run
         self.can_run = True
         self.state = self.env.reset()
         return self.state
     
     def step(self,action):
+        assert self.can_run
         next_state, reward, done, info = self.env.step(action)
         self.state = next_state
         if done == True:

@@ -2,6 +2,7 @@ import torch
 import ray
 import time
 
+from utils.utils import run_setting
 from utils.environment import Environment
 from utils.run_env import test_agent
 
@@ -22,7 +23,7 @@ def run(args, agent_args):
     start = time.time()
     test_agent.remote(args.env_name, learner, args.test_repeat, args.test_sleep)
     for i in range(args.epochs):
-        runners = [agent.train_agent.remote(args.env_name, learner, args.epochs) for agent in actors]
+        runners = [agent.run.remote(args.env_name, learner, args.epochs) for agent in actors]
         while len(runners) :
             done, runners = ray.wait(runners)  
     print("time :", time.time() - start)
