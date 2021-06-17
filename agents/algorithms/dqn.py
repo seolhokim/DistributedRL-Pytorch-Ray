@@ -6,12 +6,14 @@ from utils.utils import convert_to_tensor
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
-
+import random
 class DQN(Agent):
-    def __init__(self, device, state_dim, action_dim, args):
+    def __init__(self, device, state_dim, action_dim, args, epsilon):
         super(DQN, self).__init__(state_dim, action_dim, args)
         self.args = args
         self.device = device
+        self.epsilon = epsilon
+        self.action_dim = action_dim
         self.q_network = Actor(self.args['layer_num'], state_dim, action_dim,\
                    self.args['hidden_dim'], self.args['activation_function'],\
                    self.args['last_activation'],self.args['trainable_std'])
@@ -23,8 +25,14 @@ class DQN(Agent):
         self.optimizer = optim.Adam(self.q_network.parameters(), lr = self.args['lr'])
         self.update_cycle = 1000
         self.update_num = 0
-    def get_action(self,x):
+    def get_q(self,x):
         x, _ = self.q_network(x)
+        return x
+    def get_action(self,x):
+        if random.random() < self.epsilon :
+            x = random.randint(0, self.action_dim - 1)
+        else:
+            x = self.get_q(x).argmax().item()
         return x
     
     def get_buffer_size(self):
@@ -37,7 +45,7 @@ class DQN(Agent):
     def train_network(self, data):
         states, actions, rewards, next_states, dones = convert_to_tensor(self.device, data['state'], data['action'], data['reward'], data['next_state'], data['done'])
         actions = actions.type(torch.int64)
-        q = self.get_action(states)
+        q = self.get_q(states)
         q_action = q.gather(1, actions)
         next_q_max = self.target_q_network(next_states)[0].max(1)[0].unsqueeze(1)
         target = rewards + (1 - dones) * self.args['gamma'] * next_q_max

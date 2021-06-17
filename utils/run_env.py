@@ -22,7 +22,7 @@ def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.1)
     for t in range(traj_length):
         if brain.args['value_based'] :
             if brain.args['discrete'] :
-                action = brain.get_action(torch.from_numpy(state).float()).argmax().item()
+                action = brain.get_action(torch.from_numpy(state).float())
             else :
                 pass
         else :
