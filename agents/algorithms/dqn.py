@@ -23,6 +23,13 @@ class DQN(Agent):
         
         self.target_q_network.load_state_dict(self.q_network.state_dict())
         self.optimizer = optim.Adam(self.q_network.parameters(), lr = self.args['lr'])
+        
+        if self.args['discrete'] :
+            action_dim = 1
+        self.data = ReplayBuffer(buffer_copy = True, \
+                                         max_size = self.args['traj_length'], \
+                                         state_dim = state_dim, num_action = action_dim, \
+                                         n_step = 3, args = self.args)
         self.update_cycle = 1000
         self.update_num = 0
         

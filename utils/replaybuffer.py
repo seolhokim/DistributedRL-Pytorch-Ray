@@ -3,8 +3,9 @@ import ray
 from collections import deque
 
 class ReplayBuffer():
-    def __init__(self, buffer_copy, max_size, state_dim, num_action):
+    def __init__(self, buffer_copy, max_size, state_dim, num_action, n_step = 1, args = None):
         self.max_size = max_size
+        self.n_step = n_step
         self.data_idx = 0
         self.data = {}
         self.buffer_copy = buffer_copy
@@ -14,7 +15,9 @@ class ReplayBuffer():
         self.data['reward'] = np.zeros((self.max_size, 1))
         self.data['next_state'] = np.zeros((self.max_size, state_dim))
         self.data['done'] = np.zeros((self.max_size, 1))
-        
+        if self.n_step > 1 :
+            self.n_step_buffer = deque(maxlen=self.n_step)
+            self.args = args
     def input_data(self, idx, key, transition):
         data_len = len(transition[key])
         if self.buffer_copy == True:
@@ -31,6 +34,16 @@ class ReplayBuffer():
         return data_len
     
     def put_data(self, transition):
+        if self.n_step > 1 :
+            self.n_step_buffer.append(transition)
+            if len(self.n_step_buffer) < self.n_step :
+                return
+            else :
+                n_step_reward = self.n_step_buffer[-1]['reward']
+                for traj in reversed(list(self.n_step_buffer)[:-1]):
+                    reward, done = traj['reward'], traj['done']
+                    n_step_reward = reward + (1 - done) * self.args['gamma'] * n_step_reward
+                traj['reward'] = n_step_reward
         idx = self.data_idx % self.max_size
         for key in transition.keys():
             data_len = self.input_data(idx, key, transition)

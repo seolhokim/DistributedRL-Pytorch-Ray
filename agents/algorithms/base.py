@@ -28,12 +28,6 @@ class AgentBase(nn.Module,metaclass=ABCMeta):
 class Agent(AgentBase):
     def __init__(self, state_dim, action_dim, args):
         super(Agent, self).__init__()
-        self.args = args
-        if self.args['discrete'] :
-            action_dim = 1
-        
-        self.data = ReplayBuffer(buffer_copy = True, max_size = self.args['traj_length'], state_dim = state_dim, num_action = action_dim)
-        
     def name(self):
         return self.__class__.__name__.lower()
     
@@ -84,6 +78,9 @@ class ActorCritic(Agent):
         self.critic = Critic(self.args['layer_num'], state_dim, 1, \
                              self.args['hidden_dim'], self.args['activation_function'],\
                              self.args['last_activation'])
+        if self.args['discrete'] :
+            action_dim = 1
+        self.data = ReplayBuffer(buffer_copy = True, max_size = self.args['traj_length'], state_dim = state_dim, num_action = action_dim)
     def get_action(self, x):
         if self.args['discrete'] :
             mu,_ = self.actor(x)
