@@ -8,7 +8,7 @@ from utils.run_env import run_env
 class APEXActor(Actor):
     def run(self, env_name, learner, global_buffer, epochs):
         env = Environment(env_name)
-        run_env(env, self.brain, self.args['actor_memory_size'], True)
+        run_env(env, self.brain, self.args['traj_length'], True)
         print("actor start")
         i = 0
         while 1:
