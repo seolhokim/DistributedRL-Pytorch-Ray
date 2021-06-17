@@ -30,10 +30,10 @@ def run(args, agent_args):
 
     time.sleep(1)
     while 1 :
-        learner.run.remote(buffer)
+        ray.wait([learner.run.remote(buffer)])
         #brain = ray.get(learner.get_brain.remote())
         #print(next(brain.actor.parameters())[0])
-        time.sleep(3)
+        time.sleep(0.1)
         
 @ray.remote
 def buffer_run(buffer):
