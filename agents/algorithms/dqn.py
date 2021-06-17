@@ -25,9 +25,11 @@ class DQN(Agent):
         self.optimizer = optim.Adam(self.q_network.parameters(), lr = self.args['lr'])
         self.update_cycle = 1000
         self.update_num = 0
+        
     def get_q(self,x):
         x, _ = self.q_network(x)
         return x
+    
     def get_action(self,x):
         if random.random() < self.epsilon :
             x = random.randint(0, self.action_dim - 1)
