@@ -24,21 +24,22 @@ def run(args, agent_args):
     epsilon = 0.1
     alpha = 1
     ray.get([agent.init.remote(idx, DQN(device, state_dim, action_dim, agent_args, epsilon = (epsilon ** (1 + (idx/(args.num_actors-1))* alpha) ) ), agent_args) for idx, agent in enumerate(actors)])
-
+    
+    ray.wait([actor.fill_buffer.remote(args.env_name) for actor in actors])
     [actor.run.remote(args.env_name, learner, buffer, args.epochs) for actor in actors]
-    test_agent.remote(args.env_name, learner, args.test_repeat, args.test_sleep)
     buffer_run.remote(buffer)
-
-    time.sleep(1)
+    test_agent.remote(args.env_name, learner, args.test_repeat, args.test_sleep)
+    time.sleep(3)
     while 1 :
         ray.wait([learner.run.remote(buffer)])
         time.sleep(0.2)
+    
         
 @ray.remote
 def buffer_run(buffer):
     print('buffer_start')
     while 1:
     #for i in range(500):
-        ray.get(buffer.stack_data.remote())
+        ray.wait([buffer.stack_data.remote()])
         time.sleep(0.1)
     print("buffer finished")

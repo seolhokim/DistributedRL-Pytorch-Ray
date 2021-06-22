@@ -1,6 +1,9 @@
 import numpy as np
 import ray
+import random
+
 from collections import deque
+from utils.sum_tree import SumTree
 
 class ReplayBuffer():
     def __init__(self, buffer_copy, max_size, state_dim, num_action, n_step = 1, args = None):
@@ -63,27 +66,82 @@ class ReplayBuffer():
             return self.data
     def size(self):
         return min(self.max_size, self.data_idx)
-    
+
+
+class Memory:  # stored as ( s, a, r, s_ ) in SumTree
+    e = 0.01
+    a = 0.6
+    beta = 0.4
+    beta_increment_per_sampling = 0.001
+
+    def __init__(self, capacity):
+        self.tree = SumTree(capacity)
+        self.capacity = capacity
+
+    def _get_priority(self, error):
+        return (np.abs(error) + self.e) ** self.a
+
+    def add(self, error, sample):
+        p = self._get_priority(error)
+        self.tree.add(p, sample)
+
+    def sample(self, n):
+        batch = []
+        idxs = []
+        segment = self.tree.total() / n
+        priorities = []
+
+        self.beta = np.min([1., self.beta + self.beta_increment_per_sampling])
+
+        for i in range(n):
+            a = segment * i
+            b = segment * (i + 1)
+
+            s = random.uniform(a, b)
+            (idx, p, data) = self.tree.get(s)
+            priorities.append(p)
+            batch.append(data)
+            idxs.append(idx)
+        sampling_probabilities = priorities / self.tree.total()
+        is_weight = np.power(self.tree.n_entries * sampling_probabilities, -self.beta)
+        is_weight /= is_weight.max()
+
+        return batch, idxs, is_weight
+
+    def update(self, idx, error):
+        p = self._get_priority(error)
+        self.tree.update(idx, p)
+        
 @ray.remote
 class CentralizedBuffer:
     def __init__(self, learner_memory_size, state_dim, num_action):
-        self.temp_buffer = deque(maxlen=learner_memory_size)
-        self.buffer =  ReplayBuffer(False, learner_memory_size, state_dim, num_action)
+        self.append_buffer = deque(maxlen = learner_memory_size)
+        self.update_buffer = deque(maxlen = learner_memory_size)
+        #self.buffer =  ReplayBuffer(False, learner_memory_size, state_dim, num_action)
+        self.buffer = Memory(learner_memory_size)
         self.max_iter = 50
     def put_trajectories(self, data):
-        self.temp_buffer.append(data)
+        self.append_buffer.append(data)
     
-    def get_temp_buffer(self):
-        return self.temp_buffer
+    def get_append_buffer(self):
+        return self.append_buffer
+    
+    def get_update_buffer(self):
+        return self.update_buffer
     
     def get_buffer(self):
         return self.buffer
     
     def sample(self,batch_size):
-        return self.buffer.sample(shuffle = True, batch_size = batch_size)
+        return self.buffer.sample(batch_size)
     
     def stack_data(self):
-        size = min(len(self.temp_buffer), self.max_iter)
-        data = [self.temp_buffer.popleft() for _ in range(size)]
+        size = min(len(self.append_buffer), self.max_iter)
+        data = [self.append_buffer.popleft() for _ in range(size)]
         for i in range(size):
-            self.buffer.put_data(data[i])
+            priority, state, action, reward, next_state, done = \
+            data[i]['priority'], data[i]['state'], data[i]['action'], data[i]['reward'], data[i]['next_state'], data[i]['done']
+            for j in range(len(data[i])):
+                self.buffer.add(priority[j].item(), [state[j], action[j], reward[j], next_state[j], done[j]])
+            
+        print("len(data) : ",len(data))
