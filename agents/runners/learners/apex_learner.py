@@ -8,10 +8,8 @@ class APEXLearner(Learner):
     def run(self,buffer):
         #while 1 :
         print('learner start')
-        for i in range(500):
+        for i in range(self.args['train_epoch']):
             data = ray.get(buffer.sample.remote(self.args['learner_batch_size']))
-            if len(data) > 0:
-                self.brain.train_network(data)
-            else :
-                time.sleep(0.1)
+            idx, td_error = self.brain.train_network(data)
+            ray.get(buffer.put_idxs.remote([idx, td_error]))
         print('learner finish')

@@ -1,12 +1,15 @@
 from networks.network import Actor
 from agents.algorithms.base import Agent
 from utils.replaybuffer import ReplayBuffer
-from utils.utils import convert_to_tensor
+from utils.utils import convert_to_tensor, make_transition
 
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
+
 import random
+import numpy as np
+
 class DQN(Agent):
     def __init__(self, device, state_dim, action_dim, args, epsilon):
         super(DQN, self).__init__(state_dim, action_dim, args)
@@ -30,12 +33,22 @@ class DQN(Agent):
                                          max_size = self.args['traj_length'], \
                                          state_dim = state_dim, num_action = action_dim, \
                                          n_step = 3, args = self.args)
-        self.update_cycle = 1000
         self.update_num = 0
         
     def get_q(self,x):
         x, _ = self.q_network(x)
         return x
+    
+    def get_td_error(self, data, weights = False):
+        state, action, reward, next_state, done = convert_to_tensor(self.device, data['state'], data['action'], data['reward'], data['next_state'], data['done'])
+        action = action.type(torch.int64)
+        q = self.get_q(state)
+        q_action = q.gather(1, action)
+        target = reward + (1 - done) * self.args['gamma'] * self.target_q_network(next_state)[0].max(1)[0].unsqueeze(1)
+        if isinstance(weights, np.ndarray):
+            return torch.tensor(weights) * (q_action - target.detach())**2
+        else :
+            return (q_action - target.detach())**2
     
     def get_action(self,x):
         if random.random() < self.epsilon :
@@ -52,19 +65,20 @@ class DQN(Agent):
         return data
     
     def train_network(self, data):
-        states, actions, rewards, next_states, dones = convert_to_tensor(self.device, data['state'], data['action'], data['reward'], data['next_state'], data['done'])
-        actions = actions.type(torch.int64)
-        q = self.get_q(states)
-        q_action = q.gather(1, actions)
-        next_q_max = self.target_q_network(next_states)[0].max(1)[0].unsqueeze(1)
-        target = rewards + (1 - dones) * self.args['gamma'] * next_q_max
-        loss = F.smooth_l1_loss(q_action, target.detach())
-        
+        mini_batch, idxs, is_weights = data
+        mini_batch = np.array(mini_batch, dtype = object).transpose()
+        state = np.vstack(mini_batch[0])
+        action = np.vstack(mini_batch[1])
+        reward = np.vstack(mini_batch[2])
+        next_state = np.vstack(mini_batch[3])
+        done = np.vstack(mini_batch[4])
+        data = make_transition(state, action, reward, next_state, done)
+        td_error = self.get_td_error(data,is_weights.reshape(-1,1))
         self.optimizer.zero_grad()
-        loss.backward()
+        td_error.mean().backward()
         self.optimizer.step()
         self.update_num += 1
         
-        if self.update_num % self.update_cycle == 0:
+        if self.update_num % self.args['target_update_cycle'] == 0:
             self.target_q_network.load_state_dict(self.q_network.state_dict())
-            
+        return idxs, td_error.detach().numpy()
