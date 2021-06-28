@@ -33,7 +33,6 @@ class DQN(Agent):
                                          max_size = self.args['traj_length'], \
                                          state_dim = state_dim, num_action = action_dim, \
                                          n_step = 3, args = self.args)
-        self.update_cycle = 1000
         self.update_num = 0
         
     def get_q(self,x):
@@ -80,6 +79,6 @@ class DQN(Agent):
         self.optimizer.step()
         self.update_num += 1
         
-        if self.update_num % self.update_cycle == 0:
+        if self.update_num % self.args['target_update_cycle'] == 0:
             self.target_q_network.load_state_dict(self.q_network.state_dict())
             
