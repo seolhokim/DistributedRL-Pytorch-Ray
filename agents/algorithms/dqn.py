@@ -81,4 +81,4 @@ class DQN(Agent):
         
         if self.update_num % self.args['target_update_cycle'] == 0:
             self.target_q_network.load_state_dict(self.q_network.state_dict())
-            
+        return idxs, td_error.detach().numpy()

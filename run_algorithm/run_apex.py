@@ -41,5 +41,6 @@ def buffer_run(buffer):
     while 1:
     #for i in range(500):
         ray.wait([buffer.stack_data.remote()])
+        ray.wait([buffer.update_idxs.remote()])
         time.sleep(0.1)
     print("buffer finished")

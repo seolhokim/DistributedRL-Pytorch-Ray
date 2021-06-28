@@ -126,9 +126,13 @@ class CentralizedBuffer:
         #self.buffer =  ReplayBuffer(False, learner_memory_size, state_dim, num_action)
         self.buffer = Memory(learner_memory_size)
         self.max_iter = 50
+        
     def put_trajectories(self, data):
         self.append_buffer.append(data)
-    
+        
+    def put_idxs(self,idxs):
+        self.update_buffer.append(idxs)
+        
     def get_append_buffer(self):
         return self.append_buffer
     
@@ -149,5 +153,12 @@ class CentralizedBuffer:
             data[i]['priority'], data[i]['state'], data[i]['action'], data[i]['reward'], data[i]['next_state'], data[i]['done']
             for j in range(len(data[i])):
                 self.buffer.add(priority[j].item(), [state[j], action[j], reward[j], next_state[j], done[j]])
-            
+                
+    def update_idxs(self):        
+        size = min(len(self.update_buffer), self.max_iter)
+        data = [self.update_buffer.popleft() for _ in range(size)]
+        for i in range(size):
+            idxs, td_errors = data[i]
+            for j in range(len(idxs)):
+                self.buffer.update(idxs[j], td_errors[j].item())
         
