@@ -57,6 +57,7 @@ class DPPO(ActorCritic):
         for i in range(self.args['train_epoch']):
             weights = ray.get(global_agent.get_weights.remote())
             self.set_weights(weights)
+            self.zero_grad()
             for state,action,old_log_prob,advantage,return_,old_value \
             in make_mini_batch(self.args['batch_size'], states, actions, \
                                            old_log_probs,advantages,returns,old_values):
@@ -85,7 +86,6 @@ class DPPO(ActorCritic):
                 value_loss_clipped = (old_value_clipped - return_.detach().float()).pow(2)
                 critic_loss = 0.5 * self.args['critic_coef'] * torch.max(value_loss,value_loss_clipped).mean()
                 loss = actor_loss + critic_loss
-                self.zero_grad()
                 loss.backward()
                 nn.utils.clip_grad_norm_(self.parameters(), self.args['max_grad_norm'])
             yield self.get_gradients()
