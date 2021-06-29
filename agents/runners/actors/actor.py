@@ -13,6 +13,8 @@ class Actor:
     def get_weights(self):
         return self.brain.get_weights()
     
+    def set_weights(self, weights):
+        self.brain.set_weights(weights)
 
      
             

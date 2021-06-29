@@ -53,16 +53,16 @@ def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.1)
     return score
 
 @ray.remote
-def test_agent(env_name, agent, repeat, sleep = 3):
+def test_agent(env_name, agent, ps, repeat, sleep = 3):
     total_time = 0 
     while 1 :
         time.sleep(sleep)
         total_time += sleep
-        brain = ray.get(agent.get_brain.remote())
+        agent.set_weights(ray.get(ps.pull.remote()))
         score_lst = []
         env = Environment(env_name)
         for i in range(repeat):
-            score = run_env(env, brain)
+            score = run_env(env, agent)
             score_lst.append(score)
         print("time : ", total_time, "'s, ", repeat, " means performance : ", sum(score_lst)/repeat)
         if sleep == 0:

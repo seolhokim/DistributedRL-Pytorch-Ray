@@ -13,10 +13,10 @@ class A3C(ActorCritic):
         self.device = device
         self.args = args
      
-    def compute_gradients(self, env, global_agent, epochs, reward_scaling = 0.1):
+    def compute_gradients(self, env, ps, epochs, reward_scaling = 0.1):
         get_traj = True
         for i in range(epochs):
-            weights = ray.get(global_agent.get_weights.remote())
+            weights = ray.get(ps.pull.remote())
             self.set_weights(weights)
             run_env(env, self, self.args['traj_length'], get_traj, reward_scaling)
             for grad in self.compute_gradients_() :
