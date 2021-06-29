@@ -5,7 +5,12 @@ from utils.environment import Environment
 
 @ray.remote
 class DPPOActor(Actor):
-    def run(self, env_name, global_agent, epochs):
+    def reset(self, env_name):
         env = Environment(env_name)
-        for grad in self.brain.compute_gradients(env, global_agent, epochs, self.args['reward_scaling']):
-            global_agent.apply_gradients.remote(self.num, grad)
+        self.brain.reset(env, reward_scaling = 0.1)
+        
+    def weight_sync(self,weights):
+        self.brain.set_weights(weights)
+    
+    def run(self):
+        return self.brain.compute_gradients()

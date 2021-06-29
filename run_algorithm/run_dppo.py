@@ -22,8 +22,6 @@ def run(args, agent_args):
     
     start = time.time()
     test_agent.remote(args.env_name, learner, args.test_repeat, args.test_sleep)
-    for i in range(args.epochs):
-        runners = [agent.run.remote(args.env_name, learner, args.epochs) for agent in actors]
-        while len(runners) :
-            done, runners = ray.wait(runners)  
+    for epoch in range(args.epochs):
+        ray.wait([learner.run.remote(actors, args)]) 
     print("time :", time.time() - start)
