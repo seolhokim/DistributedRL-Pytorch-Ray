@@ -5,7 +5,7 @@ import ray
 
 @ray.remote
 class DPPOLearner(Learner):
-    def run(self, actors, env_args):
+    def run(self, actors, ps, env_args):
         ray.wait([agent.reset.remote(env_args.env_name) for agent in actors])
         for _ in range(self.args['train_epoch']):
             weights = ray.put(self.brain.get_weights())
@@ -16,3 +16,4 @@ class DPPOLearner(Learner):
                 self.brain.add_gradients(ray.get(done_id[0]))
             self.optimizer.step()
             self.brain.zero_grad()
+            ps.push.remote(self.get_weights())

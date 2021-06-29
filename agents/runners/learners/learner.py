@@ -5,6 +5,7 @@ class Learner:
         self.brain = brain
         self.args = args
         self.optimizer = optim.Adam(self.brain.parameters(), lr = self.args['lr'])
+        
     def get_brain(self):
         return self.brain
     

@@ -15,13 +15,16 @@ def run(args, agent_args):
     algorithm = A3C
     args, agent_args, env, state_dim, action_dim, writer, device = run_setting(args, agent_args)
     learner = A3CLearner.remote()
+    actors = [A3CActor.remote() for _ in range(args.num_actors)]
+    
     ray.get(learner.init.remote(algorithm(writer, device, \
                                          state_dim, action_dim, agent_args), agent_args))
-    actors = [A3CActor.remote() for _ in range(args.num_actors)]
-    ps = ParameterServer.remote(ray.get(learner.get_weights.remote()))
-    
     ray.get([agent.init.remote(i, algorithm(writer, device, state_dim, action_dim, agent_args), \
                        agent_args) for i, agent in enumerate(actors)])
+    
+    ps = ParameterServer.remote(ray.get(learner.get_weights.remote()))
+    
+    
     
     start = time.time()
     test_agent.remote(args.env_name, algorithm(writer, device, \
