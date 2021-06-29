@@ -13,10 +13,11 @@ from agents.runners.actors.dppo_actor import DPPOActor
 def run(args, agent_args):
     args, agent_args, env, state_dim, action_dim, writer, device = run_setting(args, agent_args)
     learner = DPPOLearner.remote()
-    agent_args['num_actors'] = args.num_actors
+    actors = [DPPOActor.remote() for _ in range(args.num_actors)]
+    
     ray.get(learner.init.remote(DPPO(writer, device, \
                                          state_dim, action_dim, agent_args), agent_args))
-    actors = [DPPOActor.remote() for _ in range(args.num_actors)]
+    
     ray.get([agent.init.remote(i, DPPO(writer, device, state_dim, action_dim, agent_args), \
                        agent_args) for i, agent in enumerate(actors)])
     
