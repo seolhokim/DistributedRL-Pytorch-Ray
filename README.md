@@ -3,7 +3,6 @@
 ## Algorithm
 * A3C
 * DPPO
-  * slow update
 * Ape-X
   * (Discrete version)
 ## Tested Environment
