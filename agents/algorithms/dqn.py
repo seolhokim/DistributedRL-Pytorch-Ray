@@ -11,7 +11,7 @@ import random
 import numpy as np
 
 class DQN(Agent):
-    def __init__(self, device, state_dim, action_dim, args, epsilon):
+    def __init__(self, writer, device, state_dim, action_dim, args, epsilon):
         super(DQN, self).__init__(state_dim, action_dim, args)
         self.args = args
         self.device = device
