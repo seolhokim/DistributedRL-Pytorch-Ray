@@ -23,25 +23,30 @@ def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.1)
         if brain.args['value_based'] :
             if brain.args['discrete'] :
                 action = brain.get_action(torch.from_numpy(state).float())
+                log_prob = np.zeros((1,1))##
             else :
                 pass
         else :
             if brain.args['discrete'] :
                 prob = brain.get_action(torch.from_numpy(state).float())
                 dist = Categorical(prob)
-                action = dist.sample().item()
+                action = dist.sample()
+                log_prob = torch.log(prob.reshape(1,-1).gather(1, action.reshape(1,-1))).detach().cpu().numpy()
+                action = action.item()
             else :#continuous
                 mu,std = brain.get_action(torch.from_numpy(state).float())
                 dist = Normal(mu,std)
                 action = dist.sample()
-
+                log_prob = dist.log_prob(action).sum(1,keepdim = True).detach().cpu().numpy()
+                
         next_state, reward, done, _ = env.step(action)
         if get_traj :
             transition = make_transition(np.array(state).reshape(1,-1),\
                                          np.array(action).reshape(1,-1),\
                                          np.array(reward * reward_scaling).reshape(1,-1),\
                                          np.array(next_state).reshape(1,-1),\
-                                         np.array(float(done)).reshape(1,-1))
+                                         np.array(float(done)).reshape(1,-1),\
+                                        np.array(log_prob))
             brain.put_data(transition)
         score += reward
         if done:

@@ -18,6 +18,7 @@ class ReplayBuffer():
         self.data['reward'] = np.zeros((self.max_size, 1))
         self.data['next_state'] = np.zeros((self.max_size, state_dim))
         self.data['done'] = np.zeros((self.max_size, 1))
+        self.data['log_prob'] = np.zeros((self.max_size, 1))
         if self.n_step > 1 :
             self.n_step_buffer = deque(maxlen=self.n_step)
             self.args = args
