@@ -1,8 +1,9 @@
 import numpy as np
 import ray
 import random
-
 from collections import deque
+
+from utils.utils import make_transition
 from utils.sum_tree import SumTree
 
 class ReplayBuffer():
@@ -124,7 +125,6 @@ class CentralizedBuffer:
     def __init__(self, learner_memory_size, state_dim, num_action):
         self.append_buffer = deque(maxlen = learner_memory_size)
         self.update_buffer = deque(maxlen = learner_memory_size)
-        #self.buffer =  ReplayBuffer(False, learner_memory_size, state_dim, num_action)
         self.buffer = Memory(learner_memory_size)
         self.max_iter = 50
         
@@ -162,4 +162,35 @@ class CentralizedBuffer:
             idxs, td_errors = data[i]
             for j in range(len(idxs)):
                 self.buffer.update(idxs[j], td_errors[j].item())
+@ray.remote
+class ImpalaBuffer:
+    def __init__(self, learner_memory_size, state_dim, num_action):
+        self.append_buffer = deque(maxlen = learner_memory_size)
+        self.max_iter = 10
+        
+    def put_trajectories(self, data):
+        self.append_buffer.append(data)
+        
+    def get_append_buffer(self):
+        return self.append_buffer
+    
+    def get_buffer(self):
+        return self.buffer
+    
+    def sample(self):
+        if len(self.append_buffer) == 0 :
+            return []
+        size = min(len(self.append_buffer), self.max_iter)
+        data = [self.append_buffer.popleft() for _ in range(size)]
+        state, action, reward, next_state, done, log_prob = [], [], [], [], [], [] 
+        for d in (data):
+            state.append(d['state'])
+            action.append(d['action'])
+            reward.append(d['reward'])
+            next_state.append(d['next_state'])
+            done.append(d['done'])
+            log_prob.append(d['log_prob'])
+        state, action, reward, next_state, done, log_prob = np.concatenate(state), np.concatenate(action), np.concatenate(reward), np.concatenate(next_state), np.concatenate(done), np.concatenate(log_prob)
+        transition = make_transition(state, action, reward, next_state, done, log_prob)
+        return transition
         

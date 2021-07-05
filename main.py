@@ -3,7 +3,7 @@ import ray
 from configparser import ConfigParser
 from argparse import ArgumentParser
 
-from run_algorithm import run_apex, run_dppo, run_a3c
+from run_algorithm import run_apex, run_dppo, run_a3c, run_impala
 from utils.utils import Dict
 parser = ArgumentParser('parameters')
 
@@ -30,7 +30,8 @@ elif args.algo == 'a3c' :
     run_a3c.run(args, agent_args)
 elif args.algo == 'apex' :
     run_apex.run(args, agent_args)
-
+elif args.algo == 'impala' :
+    run_impala.run(args, agent_args)
 #ray terminate
 #ay.shutdown()
 
