@@ -45,7 +45,7 @@ class A2CVtrace(ActorCritic):
         rho = torch.min(torch.tensor(self.args['rho_bar']),torch.exp(log_probs - old_log_probs))
         c = torch.min(torch.tensor(self.args['c_bar']),torch.exp(log_probs - old_log_probs))
         delta_v = rho * (
-            rewards + self.args['gamma'] * next_v - v) #(1 - dones) 위치
+            rewards + self.args['gamma'] * next_v - v)
         vtrace = torch.zeros((size+1,1), device=self.device)
         vtrace[-1] = next_v[-1]
         vtrace[-2] = next_v[-1]
