@@ -72,7 +72,8 @@ class DQN(Agent):
         reward = np.vstack(mini_batch[2])
         next_state = np.vstack(mini_batch[3])
         done = np.vstack(mini_batch[4])
-        data = make_transition(state, action, reward, next_state, done)
+        log_prob = np.zeros((1,1)) ###
+        data = make_transition(state, action, reward, next_state, done, log_prob)
         td_error = self.get_td_error(data,is_weights.reshape(-1,1))
         self.optimizer.zero_grad()
         td_error.mean().backward()

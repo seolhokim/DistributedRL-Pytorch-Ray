@@ -5,6 +5,7 @@
 * DPPO
 * Ape-X
   * (Discrete version)
+* Impala
 ## Tested Environment
 ### Continuous
 * MountainCarContinuous-v0
@@ -14,10 +15,13 @@
 * LunarLander-v2
 ## TODO
 ### Fix
-* ReplayBuffer copy computation
+* Fix ReplayBuffer copy computation
   * When remote function is executed, numpy array becomes immutable. so I used copy function to cover that.
+* Check Ape-X, Impala performance 
+  * Performance does not go up in the middle.
+* Experiment distributed environment.
+  * Implemented to use only one computer.
 ### Add
-* add impala
 * add LASER
 * add R2D2
 * add NGU

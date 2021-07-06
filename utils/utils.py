@@ -21,14 +21,16 @@ def run_setting(args, agent_args):
         device = 'cpu'
     return args, agent_args, env, state_dim, action_dim, writer, device
 
-def make_transition(state,action,reward,next_state,done):
+def make_transition(state, action, reward, next_state, done, log_prob):
     transition = {}
     transition['state'] = state
     transition['action'] = action
     transition['reward'] = reward
     transition['next_state'] = next_state
     transition['done'] = done
+    transition['log_prob'] = log_prob
     return transition
+
 def make_mini_batch(*value):
     mini_batch_size = value[0]
     full_batch_size = len(value[1])
@@ -37,6 +39,7 @@ def make_mini_batch(*value):
     for i in range(full_batch_size // mini_batch_size):
         indices = full_indices[mini_batch_size*i : mini_batch_size*(i+1)]
         yield [x[indices] for x in value[1:]]
+        
 def convert_to_tensor(*value):
     device = value[0]
     return [torch.tensor(x).float().to(device) for x in value[1:]]
