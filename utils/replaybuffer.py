@@ -119,11 +119,10 @@ class Memory:  # stored as ( s, a, r, s_ ) in SumTree
         self.tree.update(idx, p)
         
 @ray.remote
-class CentralizedBuffer:
+class ApexBuffer:
     def __init__(self, learner_memory_size, state_dim, num_action):
         self.append_buffer = deque(maxlen = learner_memory_size)
         self.update_buffer = deque(maxlen = learner_memory_size)
-        #self.buffer =  ReplayBuffer(False, learner_memory_size, state_dim, num_action)
         self.buffer = Memory(learner_memory_size)
         self.max_iter = 50
         

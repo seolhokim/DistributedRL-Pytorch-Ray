@@ -5,7 +5,7 @@ import time
 from utils.utils import run_setting
 from utils.environment import Environment
 from utils.run_env import test_agent
-from utils.replaybuffer import CentralizedBuffer
+from utils.replaybuffer import ApexBuffer
 from utils.parameter_server import ParameterServer
 
 
@@ -19,7 +19,7 @@ def run(args, agent_args):
     
     learner = APEXLearner.remote()
     actors = [APEXActor.remote() for _ in range(args.num_actors)]
-    buffer = CentralizedBuffer.remote(agent_args['learner_memory_size'], state_dim, 1)
+    buffer = ApexBuffer.remote(agent_args['learner_memory_size'], state_dim, 1)
     
     learner.init.remote(algorithm(writer, device, state_dim, action_dim, agent_args, epsilon = 0), agent_args)
     ray.get([agent.init.remote(idx, algorithm(writer, device, state_dim, action_dim, agent_args, epsilon = (agent_args['epsilon'] ** (1 + (idx/(args.num_actors-1))* agent_args['alpha']) ) ), agent_args) for idx, agent in enumerate(actors)])
