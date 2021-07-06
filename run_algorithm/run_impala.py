@@ -29,6 +29,8 @@ def run(args, agent_args):
     test_agent.remote(args.env_name, algorithm(writer, device, state_dim, action_dim, agent_args), ps, args.test_repeat, args.test_sleep)
     
     time.sleep(3)
+    
+    print('learner start')
     for epoch in range(args.epochs):
         ray.wait([learner.run.remote(ps, buffer)])
-    
+    print('learner finish')

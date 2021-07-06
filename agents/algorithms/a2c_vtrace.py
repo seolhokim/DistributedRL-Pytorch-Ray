@@ -50,5 +50,5 @@ class A2CVtrace(ActorCritic):
         vtrace[-1] = next_v[-1]
         vtrace[-2] = next_v[-1]
         for i in reversed(np.arange(size-1)):
-            vtrace[i] = v[i] + (1 - dones[i]) * (delta_v[i] +  self.args['gamma'] * c[i] * (vtrace[i+1] - next_v[i]))
+            vtrace[i] = v[i] + delta_v[i] +   (1 - dones[i]) * (self.args['gamma'] * c[i] * (vtrace[i+1] - next_v[i]))
         return rho.detach(), vtrace.detach()

@@ -6,7 +6,6 @@ import time
 @ray.remote
 class ImpalaLearner(Learner):
     def run(self, ps, buffer):
-        print('learner start')
         data = ray.get(buffer.sample.remote())
         if len(data) > 0 :
             self.optimizer.zero_grad()
@@ -17,4 +16,3 @@ class ImpalaLearner(Learner):
         else :
             print("learner wait data")
             time.sleep(0.1)
-        print('learner finish')
