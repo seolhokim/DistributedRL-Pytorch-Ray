@@ -45,16 +45,10 @@ class ReplayBuffer():
                 return
             else :
                 n_step_reward = self.n_step_buffer[-1]['reward']
-                n_step_next_state = self.n_step_buffer[-1]['next_state']
-                n_step_done = self.n_step_buffer[-1]['done']
                 for traj in reversed(list(self.n_step_buffer)[:-1]):
                     reward, done = traj['reward'], traj['done']
                     n_step_reward = reward + (1 - done) * self.args['gamma'] * n_step_reward
-                    n_step_next_state, n_step_done = \
-                                (traj['next_state'], traj['done'])if done else \
-                                (n_step_next_state, n_step_done)
-                traj['state'], traj['action'] = self.n_step_buffer[0]['state'], self.n_step_buffer[0]['action']
-                traj['reward'], traj['next_state'], traj['done'] = n_step_reward, n_step_next_state, n_step_done
+                traj['reward'] = n_step_reward
         idx = self.data_idx % self.max_size
         for key in transition.keys():
             data_len = self.input_data(idx, key, transition)

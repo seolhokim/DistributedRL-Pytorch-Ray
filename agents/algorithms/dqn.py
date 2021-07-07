@@ -30,9 +30,9 @@ class DQN(Agent):
         if self.args['discrete'] :
             action_dim = 1
         self.data = ReplayBuffer(buffer_copy = True, \
-                                         max_size = self.args['traj_length'], \
+                                         max_size = (self.args['traj_length'] - self.args['n_step'] + 1), \
                                          state_dim = state_dim, num_action = action_dim, \
-                                         n_step = 3, args = self.args)
+                                         n_step = self.args['n_step'], args = self.args)
         self.update_num = 0
         
     def get_q(self,x):
@@ -60,8 +60,8 @@ class DQN(Agent):
     def get_buffer_size(self):
         return self.data.data_idx
         
-    def get_trajectories(self, batch_size):
-        data = self.data.sample(True, batch_size)
+    def get_trajectories(self):
+        data = self.data.sample(False)
         return data
     
     def train_network(self, data):

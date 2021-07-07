@@ -6,9 +6,6 @@ from utils.run_env import run_env
 
 @ray.remote
 class APEXActor(Actor):
-    def fill_buffer(self, env_name):
-        env = Environment(env_name)
-        run_env(env, self.brain, self.args['traj_length'], True)
     def run(self, env_name, ps, global_buffer, epochs):
         env = Environment(env_name)
         print("actor start")
@@ -18,8 +15,8 @@ class APEXActor(Actor):
             if i % self.args['actor_update_cycle'] == 0:
                 weights = ray.get(ps.pull.remote())
                 self.brain.set_weights(weights)
-            run_env(env, self.brain, 1, True)
-            data = self.brain.get_trajectories(self.args['actor_traj_size'])
+            run_env(env, self.brain, self.args['traj_length'], True)
+            data = self.brain.get_trajectories()
             td_error = self.brain.get_td_error(data)
             data['priority'] = td_error.detach().numpy()
             global_buffer.put_trajectories.remote(data)
