@@ -19,7 +19,7 @@ def run(args, agent_args):
     
     learner = ImpalaLearner.remote()
     actors = [ImpalaActor.remote() for _ in range(args.num_actors)]
-    buffer = ImpalaBuffer.remote(agent_args['learner_memory_size'], state_dim, 1)
+    buffer = ImpalaBuffer.remote(agent_args['learner_memory_size'], state_dim, 1, agent_args)
     
     learner.init.remote(algorithm(writer, device, state_dim, action_dim, agent_args), agent_args)
     ray.get([agent.init.remote(idx, algorithm(writer, device, state_dim, action_dim, agent_args) , agent_args) for idx, agent in enumerate(actors)])

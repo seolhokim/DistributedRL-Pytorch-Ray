@@ -164,9 +164,9 @@ class ApexBuffer:
                 self.buffer.update(idxs[j], td_errors[j].item())
 @ray.remote
 class ImpalaBuffer:
-    def __init__(self, learner_memory_size, state_dim, num_action):
+    def __init__(self, learner_memory_size, state_dim, num_action, args):
         self.append_buffer = deque(maxlen = learner_memory_size)
-        self.max_iter = 10
+        self.args = args
         
     def put_trajectories(self, data):
         self.append_buffer.append(data)
@@ -174,13 +174,10 @@ class ImpalaBuffer:
     def get_append_buffer(self):
         return self.append_buffer
     
-    def get_buffer(self):
-        return self.buffer
-    
     def sample(self):
         if len(self.append_buffer) == 0 :
-            return []
-        size = min(len(self.append_buffer), self.max_iter)
+            return [], 0
+        size = min(len(self.append_buffer), self.args['traj_num'])
         data = [self.append_buffer.popleft() for _ in range(size)]
         state, action, reward, next_state, done, log_prob = [], [], [], [], [], [] 
         for d in (data):
@@ -190,7 +187,7 @@ class ImpalaBuffer:
             next_state.append(d['next_state'])
             done.append(d['done'])
             log_prob.append(d['log_prob'])
-        state, action, reward, next_state, done, log_prob = np.concatenate(state), np.concatenate(action), np.concatenate(reward), np.concatenate(next_state), np.concatenate(done), np.concatenate(log_prob)
+        state, action, reward, next_state, done, log_prob = np.stack(state), np.stack(action), np.stack(reward), np.stack(next_state), np.stack(done), np.stack(log_prob)
         transition = make_transition(state, action, reward, next_state, done, log_prob)
-        return transition
+        return transition, size
         

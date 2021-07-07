@@ -6,8 +6,8 @@ import time
 @ray.remote
 class ImpalaLearner(Learner):
     def run(self, ps, buffer):
-        data = ray.get(buffer.sample.remote())
-        if len(data) > 0 :
+        data, size = ray.get(buffer.sample.remote())
+        if size > 0 :
             self.optimizer.zero_grad()
             loss = self.brain.compute_gradients(data)
             loss.backward()
