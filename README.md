@@ -17,7 +17,7 @@
 ### Fix
 * Fix ReplayBuffer copy computation
   * When remote function is executed, numpy array becomes immutable. so I used copy function to cover that.
-* Check Ape-X, Impala performance 
+* Check Ape-X performance 
   * Performance does not go up in the middle.
 * Experiment distributed environment.
   * Implemented to use only one computer.
