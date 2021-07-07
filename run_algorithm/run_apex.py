@@ -25,18 +25,17 @@ def run(args, agent_args):
     ray.get([agent.init.remote(idx, algorithm(writer, device, state_dim, action_dim, agent_args, epsilon = (agent_args['epsilon'] ** (1 + (idx/(args.num_actors-1))* agent_args['alpha']) ) ), agent_args) for idx, agent in enumerate(actors)])
     ps = ParameterServer.remote(ray.get(learner.get_weights.remote()))
     
-    ray.wait([actor.fill_buffer.remote(args.env_name) for actor in actors])
     [actor.run.remote(args.env_name, ps, buffer, args.epochs) for actor in actors]
     buffer_run.remote(buffer)
     test_agent.remote(args.env_name, algorithm(writer, device, state_dim, action_dim, agent_args, epsilon = 0), ps, args.test_repeat, args.test_sleep)
     
     time.sleep(3)
-    
-    while 1 :
+    print('learner start')
+    for epoch in range(args.epochs):
         ray.wait([learner.run.remote(ps, buffer)])
-        time.sleep(agent_args['buffer_update_time'])
-    
-        
+        #time.sleep(agent_args['buffer_update_time'])
+    print('learner finish')
+     
 @ray.remote
 def buffer_run(buffer):
     print('buffer_start')
