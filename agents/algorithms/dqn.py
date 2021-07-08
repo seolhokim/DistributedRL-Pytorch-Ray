@@ -39,16 +39,19 @@ class DQN(Agent):
         x, _ = self.q_network(x)
         return x
     
-    def get_td_error(self, data, weights = False):
+    def get_td_error(self, data):
         state, action, reward, next_state, done = convert_to_tensor(self.device, data['state'], data['action'], data['reward'], data['next_state'], data['done'])
+        
         action = action.type(torch.int64)
         q = self.get_q(state)
         q_action = q.gather(1, action)
-        target = reward + (1 - done) * self.args['gamma'] * self.target_q_network(next_state)[0].max(1)[0].unsqueeze(1)
-        if isinstance(weights, np.ndarray):
-            return torch.tensor(weights) * (q_action - target.detach())**2
-        else :
-            return (q_action - target.detach())**2
+        
+        next_q_action = self.q_network(next_state)[0].argmax(-1).unsqueeze(-1)
+        next_q_action = next_q_action.type(torch.int64)
+        target_next_q_action = self.target_q_network(next_state)[0].gather(1, next_q_action)
+        
+        target = reward + (1 - done) * self.args['gamma'] * target_next_q_action
+        return (q_action - target.detach()) ** 2
     
     def get_action(self,x):
         if random.random() < self.epsilon :
@@ -65,7 +68,7 @@ class DQN(Agent):
         return data
     
     def train_network(self, data):
-        mini_batch, idxs, is_weights = data
+        mini_batch, idxs, weights = data
         mini_batch = np.array(mini_batch, dtype = object).transpose()
         state = np.vstack(mini_batch[0])
         action = np.vstack(mini_batch[1])
@@ -74,9 +77,11 @@ class DQN(Agent):
         done = np.vstack(mini_batch[4])
         log_prob = np.zeros((1,1)) ###
         data = make_transition(state, action, reward, next_state, done, log_prob)
-        td_error = self.get_td_error(data,is_weights.reshape(-1,1))
+        td_error = self.get_td_error(data)
+        loss = torch.tensor(weights.reshape(-1,1)) * td_error
+        
         self.optimizer.zero_grad()
-        td_error.mean().backward()
+        loss.mean().backward()
         self.optimizer.step()
         self.update_num += 1
         

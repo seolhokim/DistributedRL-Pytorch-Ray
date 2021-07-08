@@ -146,7 +146,7 @@ class ApexBuffer:
         for i in range(size):
             priority, state, action, reward, next_state, done = \
             data[i]['priority'], data[i]['state'], data[i]['action'], data[i]['reward'], data[i]['next_state'], data[i]['done']
-            for j in range(len(data[i])):
+            for j in range(len(data[i]['state'])):
                 self.buffer.add(priority[j].item(), [state[j], action[j], reward[j], next_state[j], done[j]])
                 
     def update_idxs(self):        
@@ -184,4 +184,3 @@ class ImpalaBuffer:
         state, action, reward, next_state, done, log_prob = np.stack(state), np.stack(action), np.stack(reward), np.stack(next_state), np.stack(done), np.stack(log_prob)
         transition = make_transition(state, action, reward, next_state, done, log_prob)
         return transition, size
-        
