@@ -49,7 +49,6 @@ def run_env(env, brain, traj_length = 0, get_traj = False, reward_scaling = 0.1)
             brain.put_data(transition)
         score += reward
         if done:
-            ####break ############
             if not get_traj:
                 break
             state = env.reset()
