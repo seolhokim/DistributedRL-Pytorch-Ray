@@ -2,6 +2,11 @@ import torch
 import numpy as np
 from utils.environment import Environment 
 
+def boolean_string(s):
+    if s not in {'False', 'True'}:
+        raise ValueError('Not a valid boolean string')
+    return s == 'True'
+
 def run_setting(args, agent_args):
     env = Environment(args.env_name)
     state_dim = env.state_dim
