@@ -1,9 +1,6 @@
-from agents.runners.learners.learner import Learner
-from utils.run_env import test_agent
-
 import ray
+from agents.runners.learners.learner import Learner
 
-@ray.remote
 class DPPOLearner(Learner):
     def run(self, actors, ps, env_args):
         ray.wait([agent.reset.remote(env_args.env_name) for agent in actors])

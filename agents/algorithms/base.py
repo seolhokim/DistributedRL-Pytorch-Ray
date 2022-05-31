@@ -57,16 +57,18 @@ class Agent(AgentBase):
         for g, p in zip(gradients, self.parameters()):
             if g is not None:
                 p.grad = g
-                
+
     def add_gradients(self, gradients):
         for g, p in zip(gradients, self.parameters()):
             if g is None :
                 pass
             elif p.grad == None :
-                p.grad = torch.zeros(g.shape)
+                #p.grad = torch.zeros(g.shape)
+                p.grad = torch.zeros(g.shape).to(p.device)
             if g is not None:
-                p.grad += g
-                
+                #p.grad += g
+                #It makes all process slower than cpu
+                p.grad += g.to(p.device)
     
 class ActorCritic(Agent):
     def __init__(self, state_dim, action_dim, args):

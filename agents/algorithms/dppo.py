@@ -7,8 +7,6 @@ import torch.nn.functional as F
 from torch.distributions.normal import Normal
 from torch.distributions import Categorical
 
-import ray
-
 class DPPO(ActorCritic):
     def __init__(self, writer, device, state_dim, action_dim, args):
         super(DPPO, self).__init__(state_dim, action_dim, args)
@@ -32,10 +30,10 @@ class DPPO(ActorCritic):
 
     def reset(self, env, reward_scaling = 0.1):
         get_traj = True
-        run_env(env, self, self.args['traj_length'], get_traj, reward_scaling)
+        run_env(env, self, self.device, self.args['traj_length'], get_traj, reward_scaling)
         data = self.data.sample(shuffle = False)
-        states, actions, rewards, next_states, dones = convert_to_tensor(self.device, data['state'], data['action'], data['reward'], data['next_state'], data['done'])
         
+        states, actions, rewards, next_states, dones = convert_to_tensor(self.device, data['state'], data['action'], data['reward'], data['next_state'], data['done'])
         if self.args['discrete'] :
             prob = self.get_action(states)
             actions = actions.type(torch.int64)
@@ -51,7 +49,7 @@ class DPPO(ActorCritic):
         old_values, advantages = self.get_gae(states, rewards, next_states, dones)
         returns = advantages + old_values
         advantages = (advantages - advantages.mean())/(advantages.std()+1e-3)
-        
+
         self.states = states
         self.actions = actions
         self.old_log_probs = old_log_probs
