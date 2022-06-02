@@ -7,3 +7,4 @@ class A3CActor(Actor):
         env = Environment(env_name)
         for grad in self.brain.compute_gradients(env, ps, epochs, self.args['reward_scaling']):
             ray.wait([global_agent.apply_gradients.remote(self.num, grad, ps)])
+            

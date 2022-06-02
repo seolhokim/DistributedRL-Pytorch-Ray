@@ -56,7 +56,8 @@ class Agent(AgentBase):
     def set_gradients(self, gradients):
         for g, p in zip(gradients, self.parameters()):
             if g is not None:
-                p.grad = g
+                #It makes all process slower than cpu
+                p.grad = g.to(p.device)
 
     def add_gradients(self, gradients):
         for g, p in zip(gradients, self.parameters()):

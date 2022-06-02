@@ -30,18 +30,9 @@ def run(args, agent_args):
     test_agent = ray.remote(num_gpus=0.1)(TestAgent)
     test_agent = test_agent.remote(args.env_name, algorithm, writer, device, \
                      state_dim, action_dim, agent_args, ps, repeat = 3)
-    try : 
-        runners = [agent.run.remote(args.env_name, learner, ps, args.epochs) for agent in actors]
-    except Exception as e:
-        # Just print(e) is cleaner and more likely what you want,
-        # but if you insist on printing message specifically whenever possible...
-        if hasattr(e, 'message'):
-            print(e.message)
-        else:
-            print(e)
+
+    runners = [agent.run.remote(args.env_name, learner, ps, args.epochs) for agent in actors]
     test_agent.test_agent.remote() 
     while len(runners) :
         done, runners = ray.wait(runners)
-
-    time.sleep(5)
     print("time :", time.time() - start)
