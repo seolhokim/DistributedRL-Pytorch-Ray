@@ -57,10 +57,10 @@ def run_env(env, brain, device, traj_length = 0, get_traj = False, reward_scalin
     return score
 
 class TestAgent:
-    def __init__(self, env_name, brain, writer, device, \
+    def __init__(self, env_name, actor, writer, device, \
                      state_dim, action_dim, agent_args, ps, repeat, sleep = 3):
         self.env_name = env_name
-        self.agent = brain(writer, device, state_dim, action_dim, agent_args).to(device)
+        self.agent = actor.brain
         self.ps = ps
         self.repeat = repeat
         self.device = device

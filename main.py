@@ -3,8 +3,7 @@ import ray
 from configparser import ConfigParser
 from argparse import ArgumentParser
 
-#from run_algorithm import run_apex,  
-from run_algorithm import  run_dppo, run_a3c, run_impala
+from run_algorithm import  run_apex, run_dppo, run_a3c, run_impala
 from utils.utils import Dict, boolean_string
 
 parser = ArgumentParser('parameters')
