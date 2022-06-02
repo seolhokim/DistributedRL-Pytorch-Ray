@@ -1,9 +1,9 @@
 import torch.optim as optim
 
 class Learner:
-    def init(self, brain, args):
-        self.brain = brain
-        self.args = args
+    def __init__(self, brain, writer, device, state_dim, action_dim, agent_args):
+        self.args = agent_args
+        self.brain = brain(writer, device, state_dim, action_dim, agent_args).to(device)
         self.optimizer = optim.Adam(self.brain.parameters(), lr = self.args['lr'])
         
     def get_brain(self):

@@ -1,9 +1,6 @@
-import ray
-
 from agents.runners.actors.actor import Actor
 from utils.environment import Environment
 
-@ray.remote
 class DPPOActor(Actor):
     def reset(self, env_name):
         env = Environment(env_name)

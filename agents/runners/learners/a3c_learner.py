@@ -2,7 +2,6 @@ from agents.runners.learners.learner import Learner
 
 import ray
 
-@ray.remote
 class A3CLearner(Learner):
     def apply_gradients(self, num, gradients, ps):
         self.optimizer.zero_grad()
