@@ -13,12 +13,11 @@ def run_env(env, brain, device, traj_length = 0, get_traj = False, reward_scalin
     transition = None
     if traj_length == 0:
         traj_length = env._max_episode_steps
-        
+
     if env.can_run :
         state = env.state
     else :
         state = env.reset()
-    
     for t in range(traj_length):
         if brain.args['value_based'] :
             if brain.args['discrete'] :
@@ -34,19 +33,20 @@ def run_env(env, brain, device, traj_length = 0, get_traj = False, reward_scalin
                 log_prob = torch.log(prob.reshape(1,-1).gather(1, action.reshape(1,-1))).detach().cpu().numpy()
                 action = action.item()
             else :#continuous
-                mu,std = brain.get_action(torch.from_numpy(state).float())
+                mu,std = brain.get_action(torch.from_numpy(state).float().to(device))
                 dist = Normal(mu,std)
                 action = dist.sample()
                 log_prob = dist.log_prob(action).sum(-1,keepdim = True).detach().cpu().numpy()
+                action = action.detach().cpu()
         next_state, reward, done, _ = env.step(action)
         if get_traj :
-            transition = make_transition(np.array(state).reshape(1,-1),\
-                                         np.array(action).reshape(1,-1),\
-                                         np.array(reward * reward_scaling).reshape(1,-1),\
-                                         np.array(next_state).reshape(1,-1),\
-                                         np.array(float(done)).reshape(1,-1),\
-                                        np.array(log_prob))
-            brain.put_data(transition)
+                transition = make_transition(np.array(state).reshape(1,-1),\
+                                             np.array(action).reshape(1,-1),\
+                                             np.array(reward * reward_scaling).reshape(1,-1),\
+                                             np.array(next_state).reshape(1,-1),\
+                                             np.array(float(done)).reshape(1,-1),\
+                                            np.array(log_prob))
+                brain.put_data(transition)
         score += reward
         if done:
             if not get_traj:
