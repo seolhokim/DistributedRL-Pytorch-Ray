@@ -27,9 +27,10 @@ def run(args, agent_args):
     
     ps = ray.remote(num_gpus=0.1)(ParameterServer)
     ps = ps.remote(ray.get(learner.get_weights.remote()))
-    
+    test_agent_brain = DPPOActor(args.num_actors, algorithm, writer, device, state_dim,\
+                             action_dim, agent_args)
     test_agent = ray.remote(num_gpus=0.1)(TestAgent)
-    test_agent = test_agent.remote(args.env_name, algorithm, writer, device, \
+    test_agent = test_agent.remote(args.env_name, test_agent_brain, writer, device, \
                      state_dim, action_dim, agent_args, ps,\
                          repeat = 3)
 
