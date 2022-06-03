@@ -15,6 +15,7 @@
 * LunarLander-v2
 ## TODO
 ### Fix
+* Fix cuda environment clock time
 * Update Impala multi learner version
 * Check Ape-X performance 
   * Performance does not go up in the middle.
