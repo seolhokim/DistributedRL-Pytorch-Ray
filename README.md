@@ -15,8 +15,6 @@
 * LunarLander-v2
 ## TODO
 ### Fix
-* Fix ReplayBuffer copy computation
-  * When remote function is executed, numpy array becomes immutable. so I used copy function to cover that.
 * Update Impala multi learner version
 * Check Ape-X performance 
   * Performance does not go up in the middle.

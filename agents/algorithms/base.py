@@ -83,7 +83,7 @@ class ActorCritic(Agent):
                              self.args['last_activation'])
         if self.args['discrete'] :
             action_dim = 1
-        self.data = ReplayBuffer(buffer_copy = True, max_size = self.args['traj_length'], state_dim = state_dim, num_action = action_dim)
+        self.data = ReplayBuffer(max_size = self.args['traj_length'], state_dim = state_dim, num_action = action_dim)
     def get_action(self, x):
         if self.args['discrete'] :
             mu,_ = self.actor(x)

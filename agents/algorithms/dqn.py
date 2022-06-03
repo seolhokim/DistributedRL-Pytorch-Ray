@@ -29,8 +29,7 @@ class DQN(Agent):
         
         if self.args['discrete'] :
             action_dim = 1
-        self.data = ReplayBuffer(buffer_copy = True, \
-                                         max_size = (self.args['traj_length'] - self.args['n_step'] + 1), \
+        self.data = ReplayBuffer(max_size = (self.args['traj_length'] - self.args['n_step'] + 1), \
                                          state_dim = state_dim, num_action = action_dim, \
                                          n_step = self.args['n_step'], args = self.args)
         self.update_num = 0
