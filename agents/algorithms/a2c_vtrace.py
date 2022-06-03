@@ -22,6 +22,7 @@ class A2CVtrace(ActorCritic):
     
     def compute_gradients(self, data):
         states, actions, rewards, next_states, dones, old_log_probs = convert_to_tensor(self.device, data['state'], data['action'], data['reward'], data['next_state'], data['done'], data['log_prob'])
+
         for i in range(self.args['train_epoch']):
             if self.args['discrete'] :
                 probs = self.get_action(states)
@@ -34,13 +35,11 @@ class A2CVtrace(ActorCritic):
             v = self.v(states)
             next_v = self.v(next_states)
             rho, v_trace = self.get_vtrace(rewards, dones, v, next_v, log_probs, old_log_probs)
-            critic_loss = F.smooth_l1_loss(v, v_trace[:,:-1])
+            critic_loss = F.smooth_l1_loss(v, v_trace)
             actor_loss = - (rho * log_probs * (rewards + self.args['gamma'] * \
-                               v_trace[:,1:] * (1 - dones) - v).detach()).mean()
+                               v_trace * (1 - dones) - v).detach()).mean()
             loss = actor_loss + critic_loss
             
-            #import time
-            #time.sleep(0.03)
             return loss 
     
     def get_vtrace(self, rewards, dones, v, next_v, log_probs, old_log_probs):
@@ -50,9 +49,14 @@ class A2CVtrace(ActorCritic):
         delta_v = rho * (
             rewards + self.args['gamma'] * next_v * (1 - dones) - v)
         vtrace = torch.zeros((size, self.args['traj_length']+1,1), device=self.device)
-        vtrace[:,-1] = next_v[:,-1]
-        vtrace[:,-2] = next_v[:,-1]
-        for i in reversed(np.arange(self.args['traj_length'])-1):
-            vtrace[:,i] = v[:,i] + delta_v[:,i] + (1 - dones[:, i]) *\
-            (self.args['gamma'] * c[:,i] * (vtrace[:, i+1] - next_v[:, i]))
-        return rho.detach(), vtrace.detach()
+
+        T = v.shape[1]
+        v_out = []
+        v_out.append(v[:, -1] + delta_v[:, -1])
+        for t in range(T - 2, -1, -1):
+            _v_out = (
+                v[:, t] + delta_v[:, t] + self.args['gamma'] * c[:, t] * (v_out[-1] - v[:, t + 1])
+            )
+            v_out.append(_v_out)
+        v_out = torch.stack(list(reversed(v_out)), 1)
+        return rho.detach(), v_out.detach()
