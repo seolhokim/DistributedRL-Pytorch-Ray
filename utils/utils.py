@@ -22,7 +22,7 @@ def run_setting(args, agent_args):
 
     ##device
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    if args.use_cuda == False:
+    if args.cuda == False:
         device = 'cpu'
     return args, agent_args, env, state_dim, action_dim, writer, device
 
