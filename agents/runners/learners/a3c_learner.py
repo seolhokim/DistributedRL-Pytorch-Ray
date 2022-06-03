@@ -5,6 +5,6 @@ import ray
 class A3CLearner(Learner):
     def apply_gradients(self, num, gradients, ps):
         self.optimizer.zero_grad()
-        self.brain.set_gradients(gradients)
+        self.algorithm.set_gradients(gradients)
         self.optimizer.step()
         ray.wait([ps.push.remote(self.get_weights())])

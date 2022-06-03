@@ -4,10 +4,10 @@ from utils.environment import Environment
 class DPPOActor(Actor):
     def reset(self, env_name):
         env = Environment(env_name)
-        self.brain.reset(env, reward_scaling = 0.1)
+        self.algorithm.reset(env, reward_scaling = 0.1)
         
     def weight_sync(self,weights):
-        self.brain.set_weights(weights)
+        self.algorithm.set_weights(weights)
     
     def run(self):
-        return self.brain.compute_gradients()
+        return self.algorithm.compute_gradients()

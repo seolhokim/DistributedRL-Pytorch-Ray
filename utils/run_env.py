@@ -8,7 +8,7 @@ import ray
 import numpy as np
 import time
 
-def run_env(env, brain, device, traj_length = 0, get_traj = False, reward_scaling = 0.1):
+def run_env(env, algorithm, device, traj_length = 0, get_traj = False, reward_scaling = 0.1):
     score = 0
     transition = None
     if traj_length == 0:
@@ -19,21 +19,21 @@ def run_env(env, brain, device, traj_length = 0, get_traj = False, reward_scalin
     else :
         state = env.reset()
     for t in range(traj_length):
-        if brain.args['value_based'] :
-            if brain.args['discrete'] :
-                action = brain.get_action(torch.from_numpy(state).float().to(device))
+        if algorithm.args['value_based'] :
+            if algorithm.args['discrete'] :
+                action = algorithm.get_action(torch.from_numpy(state).float().to(device))
                 log_prob = np.zeros((1,1))##
             else :
                 pass
         else :
-            if brain.args['discrete'] :
-                prob = brain.get_action(torch.from_numpy(state).float().to(device))
+            if algorithm.args['discrete'] :
+                prob = algorithm.get_action(torch.from_numpy(state).float().to(device))
                 dist = Categorical(prob)
                 action = dist.sample()
                 log_prob = torch.log(prob.reshape(1,-1).gather(1, action.reshape(1,-1))).detach().cpu().numpy()
                 action = action.item()
             else :#continuous
-                mu,std = brain.get_action(torch.from_numpy(state).float().to(device))
+                mu,std = algorithm.get_action(torch.from_numpy(state).float().to(device))
                 dist = Normal(mu,std)
                 action = dist.sample()
                 log_prob = dist.log_prob(action).sum(-1,keepdim = True).detach().cpu().numpy()
@@ -46,7 +46,7 @@ def run_env(env, brain, device, traj_length = 0, get_traj = False, reward_scalin
                                              np.array(next_state).reshape(1,-1),\
                                              np.array(float(done)).reshape(1,-1),\
                                             np.array(log_prob))
-                brain.put_data(transition)
+                algorithm.put_data(transition)
         score += reward
         if done:
             if not get_traj:
@@ -60,7 +60,7 @@ class TestAgent:
     def __init__(self, env_name, actor, writer, device, \
                      state_dim, action_dim, agent_args, ps, repeat, sleep = 3):
         self.env_name = env_name
-        self.agent = actor.brain
+        self.agent = actor.algorithm
         self.ps = ps
         self.repeat = repeat
         self.device = device

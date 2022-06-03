@@ -8,7 +8,7 @@ class ImpalaLearner(Learner):
         data, size = ray.get(buffer.sample.remote())
         if size > 0 :
             self.optimizer.zero_grad()
-            loss = self.brain.compute_gradients(data)
+            loss = self.algorithm.compute_gradients(data)
             loss.backward()
             self.optimizer.step()
             ray.wait([ps.push.remote(self.get_weights())])

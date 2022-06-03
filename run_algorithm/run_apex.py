@@ -32,10 +32,10 @@ def run(args, agent_args):
     
     [actor.run.remote(args.env_name, ps, buffer, args.epochs) for actor in actors]
     buffer_run.remote(buffer)
-    test_agent_brain = APEXActor(args.num_actors, algorithm, writer, device, state_dim,\
+    test_agent_algorithm = APEXActor(args.num_actors, algorithm, writer, device, state_dim,\
                              action_dim, agent_args, epsilon = 0)
     test_agent = ray.remote(num_gpus=0.1)(TestAgent)
-    test_agent = test_agent.remote(args.env_name, test_agent_brain, writer, device, \
+    test_agent = test_agent.remote(args.env_name, test_agent_algorithm, writer, device, \
                      state_dim, action_dim, agent_args, ps,\
                          repeat = 3)
 

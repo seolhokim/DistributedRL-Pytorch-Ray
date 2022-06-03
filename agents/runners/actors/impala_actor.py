@@ -12,8 +12,8 @@ class ImpalaActor(Actor):
         while 1:
         #for j in range():
             weights = ray.get(ps.pull.remote())
-            self.brain.set_weights(weights)
-            run_env(env, self.brain, self.brain.device, self.args['traj_length'], True)
-            data = self.brain.get_trajectories()
+            self.algorithm.set_weights(weights)
+            run_env(env, self.algorithm, self.algorithm.device, self.args['traj_length'], True)
+            data = self.algorithm.get_trajectories()
             global_buffer.put_trajectories.remote(data)
         print('actor finish')
