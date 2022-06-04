@@ -44,10 +44,16 @@ class DQN(Agent):
         q = self.get_q(state)
         q_action = q.gather(1, action)
         target = reward + (1 - done) * self.args['gamma'] * self.target_q_network(next_state)[0].max(1)[0].unsqueeze(1)
+        
+        beta = 1
+        n = torch.abs(q_action - target.detach())
+        cond = n < beta
+        loss = torch.where(cond, 0.5 * n**2 / beta, n - 0.5 * beta)
+        
         if isinstance(weights, np.ndarray):
-            return torch.tensor(weights) * (q_action - target.detach())**2
+            return torch.tensor(weights) * loss
         else :
-            return (q_action - target.detach())**2
+            return loss
     
     def get_action(self,x):
         if random.random() < self.epsilon :

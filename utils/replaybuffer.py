@@ -144,7 +144,7 @@ class ApexBuffer:
             for j in range(len(data[i])):
                 self.buffer.add(priority[j].item(), [state[j], action[j], reward[j], next_state[j], done[j]])
                 
-    def update_idxs(self):        
+    def update_idxs(self):    
         size = min(len(self.update_buffer), self.max_iter)
         data = [self.update_buffer.popleft() for _ in range(size)]
         for i in range(size):
