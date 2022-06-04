@@ -53,6 +53,8 @@ def buffer_run(buffer):
     print('buffer_start')
     while 1:
         ray.wait([buffer.stack_data.remote()])
+        #synchronize issue check
+        #lock it if learner added data to buffer
         ray.wait([buffer.update_idxs.remote()])
         time.sleep(0.1)
     print("buffer finished")
