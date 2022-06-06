@@ -45,7 +45,6 @@ def run(args, agent_args):
     print('learner start')
     for epoch in range(args.epochs):
         ray.wait([learner.run.remote(ps, buffer)])
-        #time.sleep(agent_args['buffer_update_time'])
     print('learner finish')
      
 @ray.remote

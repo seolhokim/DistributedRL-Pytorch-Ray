@@ -15,7 +15,6 @@ class APEXActor(Actor):
         print("actor start")
         i = 0
         while 1:
-        #for j in range():
             if i % self.args['actor_update_cycle'] == 0:
                 weights = ray.get(ps.pull.remote())
                 self.algorithm.set_weights(weights)
