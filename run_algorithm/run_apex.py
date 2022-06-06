@@ -23,7 +23,7 @@ def run(args, agent_args):
     
     actors = [ray.remote(num_gpus=0.1)(APEXActor) for _ in range(args.num_actors)]
     actors = [actor.remote(i, algorithm, writer, device, state_dim,\
-                             action_dim, agent_args, epsilon = (agent_args['epsilon'] ** (1 + (i/(args.num_actors-1))* agent_args['alpha']) ) ) for i, actor in enumerate(actors)]
+                             action_dim, agent_args, epsilon = (agent_args['epsilon'] ** (1 + ((i/(args.num_actors-1))* agent_args['alpha'])))) for i, actor in enumerate(actors)]
     buffer = ApexBuffer.remote(agent_args['learner_memory_size'], state_dim, 1)
     
     
