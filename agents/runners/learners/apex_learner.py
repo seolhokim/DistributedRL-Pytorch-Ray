@@ -10,5 +10,5 @@ class APEXLearner(Learner):
         data = ray.get(buffer.sample.remote(self.args['learner_batch_size']))
         idx, td_error = self.algorithm.train_network(data)
         ray.wait([ps.push.remote(self.get_weights())])
-        ray.wait(buffer.put_idxs.remote([idx, td_error]))
+        ray.wait([buffer.put_idxs.remote([idx, td_error])])
             
