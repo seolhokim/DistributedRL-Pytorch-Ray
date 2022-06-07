@@ -1,6 +1,18 @@
 import torch
+import collections
+_field_names = [
+    "state",
+    "action",
+    "reward",
+    "next_state",
+    "done",
+    "log_prob"
+]
+Experience = collections.namedtuple("Experience", field_names=_field_names)
 import numpy as np
 from utils.environment import Environment 
+
+
 
 def boolean_string(s):
     if s not in {'False', 'True'}:

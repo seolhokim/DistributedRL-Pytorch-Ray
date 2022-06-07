@@ -7,7 +7,7 @@ from torch.distributions.normal import Normal
 import ray
 import numpy as np
 import time
-
+from utils.utils import Experience
 def run_env(env, algorithm, device, traj_length = 0, get_traj = False, reward_scaling = 0.1):
     score = 0
     transition = None

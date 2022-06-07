@@ -3,8 +3,7 @@ import ray
 import random
 from collections import deque
 
-from utils.utils import make_transition
-from utils.sum_tree import SumTree
+from utils.utils import make_transition, Experience
 
 class ReplayBuffer():
     def __init__(self, max_size, state_dim, num_action, n_step = 1, args = None):
@@ -64,57 +63,101 @@ class ReplayBuffer():
     def size(self):
         return min(self.max_size, self.data_idx)
 
+class PrioritizedExperienceReplayBuffer:
+    """Fixed-size buffer to store priority, Experience tuples."""
 
-class Memory:  # stored as ( s, a, r, s_ ) in SumTree
-    e = 0.01
-    a = 0.6
-    beta = 0.4
-    beta_increment_per_sampling = 0.001
+    def __init__(self,
+                 buffer_size: int,
+                 batch_size: int,
+                 alpha: float = 0.6,
+                 beta: float = 0.4,
+                 random_state: np.random.RandomState = None) -> None:
+        """
+        Initialize an ExperienceReplayBuffer object.
 
-    def __init__(self, capacity):
-        self.tree = SumTree(capacity)
-        self.capacity = capacity
-
-    def _get_priority(self, error):
-        return (np.abs(error) + self.e) ** self.a
-
-    def add(self, error, sample):
-        p = self._get_priority(error)
-        self.tree.add(p, sample)
-
-    def sample(self, n):
-        batch = []
-        idxs = []
-        segment = self.tree.total() / n
-        priorities = []
-
-        self.beta = np.min([1., self.beta + self.beta_increment_per_sampling])
-
-        for i in range(n):
-            a = segment * i
-            b = segment * (i + 1)
-
-            s = random.uniform(a, b)
-            (idx, p, data) = self.tree.get(s)
-            priorities.append(p)
-            batch.append(data)
-            idxs.append(idx)
-        sampling_probabilities = priorities / self.tree.total()
-        is_weight = np.power(self.tree.n_entries * sampling_probabilities, -self.beta)
-        is_weight /= is_weight.max()
-
-        return batch, idxs, is_weight
-
-    def update(self, idx, error):
-        p = self._get_priority(error)
-        self.tree.update(idx, p)
+        Parameters:
+        -----------
+        buffer_size (int): maximum size of buffer
+        batch_size (int): size of each training batch
+        alpha (float): Strength of prioritized sampling. Default to 0.0 (i.e., uniform sampling).
+        random_state (np.random.RandomState): random number generator.
         
+        """
+        self._batch_size = batch_size
+        self._buffer_size = buffer_size
+        self._buffer_length = 0 # current number of prioritized experience tuples in buffer
+        self._buffer = np.empty(self._buffer_size, dtype=[("priority", np.float32), ("experience", Experience)])
+        self._alpha = alpha
+        self._beta = beta
+        self._random_state = np.random.RandomState() if random_state is None else random_state
+        
+    def __len__(self) -> int:
+        """Current number of prioritized experience tuple stored in buffer."""
+        return self._buffer_length
+
+    @property
+    def alpha(self):
+        """Strength of prioritized sampling."""
+        return self._alpha
+
+    @property
+    def batch_size(self) -> int:
+        """Number of experience samples per training batch."""
+        return self._batch_size
+    
+    @property
+    def buffer_size(self) -> int:
+        """Maximum number of prioritized experience tuples stored in buffer."""
+        return self._buffer_size
+
+    def add(self, priority : float, experience: Experience) -> None:
+        """Add a new experience to memory."""
+        #priority = 1.0 if self.is_empty() else self._buffer["priority"].max()
+        if self.is_full():
+            if priority > self._buffer["priority"].min():
+                idx = self._buffer["priority"].argmin()
+                self._buffer[idx] = (priority, experience)
+            else:
+                pass # low priority experiences should not be included in buffer
+        else:
+            self._buffer[self._buffer_length] = (priority, experience)
+            self._buffer_length += 1
+
+    def is_empty(self) -> bool:
+        """True if the buffer is empty; False otherwise."""
+        return self._buffer_length == 0
+    
+    def is_full(self) -> bool:
+        """True if the buffer is full; False otherwise."""
+        return self._buffer_length == self._buffer_size
+    
+    def sample(self):
+        """Sample a batch of experiences from memory."""
+        # use sampling scheme to determine which experiences to use for learning
+        ps = self._buffer[:self._buffer_length]["priority"]
+        sampling_probs = ps**self._alpha / np.sum(ps**self._alpha)
+        idxs = self._random_state.choice(np.arange(ps.size),
+                                         size=self._batch_size,
+                                         replace=True,
+                                         p=sampling_probs)
+        
+        # select the experiences and compute sampling weights
+        experiences = self._buffer["experience"][idxs]     
+        weights = (self._buffer_length * sampling_probs[idxs])**(-self._beta)
+        normalized_weights = weights / weights.max()
+        
+        return idxs, experiences, normalized_weights
+
+    def update_priorities(self, idxs: np.array, priorities: np.array) -> None:
+        """Update the priorities associated with particular experiences."""
+        self._buffer["priority"][idxs] = priorities
+
 @ray.remote
 class ApexBuffer:
     def __init__(self, learner_memory_size, state_dim, num_action):
         self.append_buffer = deque(maxlen = learner_memory_size)
         self.update_buffer = deque(maxlen = learner_memory_size)
-        self.buffer = Memory(learner_memory_size)
+        self.buffer = PrioritizedExperienceReplayBuffer(learner_memory_size, 512) #fix batch_size
         self.max_iter = 50
         
     def put_trajectories(self, data):
@@ -133,7 +176,7 @@ class ApexBuffer:
         return self.buffer
     
     def sample(self,batch_size):
-        return self.buffer.sample(batch_size)
+        return self.buffer.sample()
     
     def stack_data(self):
         size = min(len(self.append_buffer), self.max_iter)
@@ -142,15 +185,14 @@ class ApexBuffer:
             priority, state, action, reward, next_state, done = \
             data[i]['priority'], data[i]['state'], data[i]['action'], data[i]['reward'], data[i]['next_state'], data[i]['done']
             for j in range(len(data[i])):
-                self.buffer.add(priority[j].item(), [state[j], action[j], reward[j], next_state[j], done[j]])
+                self.buffer.add(priority[j].item(), Experience(state[j], action[j], reward[j], next_state[j], done[j], 0)) #fix log_prob
                 
     def update_idxs(self):    
         size = min(len(self.update_buffer), self.max_iter)
         data = [self.update_buffer.popleft() for _ in range(size)]
         for i in range(size):
             idxs, td_errors = data[i]
-            for j in range(len(idxs)):
-                self.buffer.update(idxs[j], td_errors[j].item())
+            self.buffer.update_priorities(idxs, td_errors.squeeze())
 @ray.remote
 class ImpalaBuffer:
     def __init__(self, learner_memory_size, state_dim, num_action, args):

@@ -1,7 +1,7 @@
 from networks.network import Actor
 from agents.algorithms.base import Agent
 from utils.replaybuffer import ReplayBuffer
-from utils.utils import convert_to_tensor, make_transition
+from utils.utils import convert_to_tensor, make_transition, Experience
 
 import torch
 import torch.optim as optim
@@ -54,7 +54,24 @@ class DQN(Agent):
             return torch.tensor(weights) * loss
         else :
             return loss
-    
+    def get_td_error2(self, data, weights = None):
+        if isinstance(data, Experience):
+            states, actions, rewards, next_states, dones, _ = [torch.Tensor(vs) for vs in zip(data)]
+        else :
+            states, actions, rewards, next_states, dones, _ = [torch.Tensor(vs) for vs in zip(*data)]
+        actions = actions.type(torch.int64) 
+        q = self.get_q(states)
+        q_action = q.gather(1, actions)
+        target = rewards + (1 - dones) * self.args['gamma'] * self.target_q_network(next_states)[0].max(1)[0].unsqueeze(1)
+        beta = 1
+        n = torch.abs(q_action - target.detach())
+        cond = n < beta
+        loss = torch.where(cond, 0.5 * n**2 / beta, n - 0.5 * beta)
+        if isinstance(weights, np.ndarray):
+            return torch.tensor(weights).unsqueeze(1) * loss
+        else :
+            return loss
+        
     def get_action(self,x):
         if random.random() < self.epsilon :
             x = random.randint(0, self.action_dim - 1)
@@ -69,22 +86,13 @@ class DQN(Agent):
         data = self.data.sample(False)
         return data
     
-    def train_network(self, data):
-        mini_batch, idxs, is_weights = data
-        mini_batch = np.array(mini_batch, dtype = object).transpose()
-        state = np.vstack(mini_batch[0])
-        action = np.vstack(mini_batch[1])
-        reward = np.vstack(mini_batch[2])
-        next_state = np.vstack(mini_batch[3])
-        done = np.vstack(mini_batch[4])
-        log_prob = np.zeros((1,1)) ###
-        data = make_transition(state, action, reward, next_state, done, log_prob)
-        td_error = self.get_td_error(data,is_weights.reshape(-1,1))
+    def train_network(self, sample):
+        idx, data, priority = sample
+        loss = self.get_td_error2(data, priority)
         self.optimizer.zero_grad()
-        td_error.mean().backward()
+        loss.mean().backward()
         self.optimizer.step()
         self.update_num += 1
-        
         if self.update_num % self.args['target_update_cycle'] == 0:
             self.target_q_network.load_state_dict(self.q_network.state_dict())
-        return idxs, td_error.detach().numpy()
+        return idx, loss.detach().numpy()
