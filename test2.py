@@ -47,7 +47,30 @@ optimizer = torch.optim.Adam(agent.parameters(),lr = 0.001)
 update_num = 0
 target_update_cycle = 100
 gamma = 0.98
+from utils.replaybuffer import Memory
+memory = Memory(100000)
+def train(agent, memory):
+    data = memory.sample(32)
+    mini_batch, idxs, is_weights = data
+    #print(mini_batch)
+    import pandas as pd
+    print(mini_batch)
+    mini_batch = (pd.DataFrame(mini_batch))
 
+    state = np.vstack(mini_batch.state.values)
+    action = np.vstack(mini_batch.action.values)
+    reward = np.vstack(mini_batch.reward.values)
+    next_state = np.vstack(mini_batch.next_state.values)
+    done_ = np.vstack(mini_batch.done.values)
+    log_prob = np.zeros((1,1)) ###
+    data = make_transition(state, action, reward, next_state, done_, log_prob)
+
+    loss = agent.get_td_error(data)
+    agent.optimizer.zero_grad()
+    loss.mean().backward()
+    agent.optimizer.step()
+    td_error = loss.detach().numpy()
+    [memory.update(idxs[i], td_error[i]) for i in range(len(idxs))]
 for n_epi in range(10000):
     score = 0
     done = False
@@ -62,21 +85,12 @@ for n_epi in range(10000):
                                      np.array(next_state).reshape(1,-1),\
                                      np.array(float(done)).reshape(1,-1),\
                                     np.array(log_prob))
-        agent.put_data(transition)
+        td_error = agent.get_td_error(transition).detach().numpy()
+        transition['priority'] = td_error
+        memory.add(td_error, transition)
         score += reward
-        if (agent.data.data_idx) > 2000:
-            data = agent.data.sample(True, batch_size = 32)
-            states, actions, rewards, next_states, dones = convert_to_tensor(device, data['state'], data['action'], data['reward'], data['next_state'], data['done'])
-            actions = actions.type(torch.int64)
-            q_out, _ = agent.q_network(states)
-            q_a = q_out.gather(1,actions)
-            next_q_out, _ = agent.target_q_network(next_states)
-            max_q_prime = next_q_out.max(1)[0].unsqueeze(1)
-            target = rewards + gamma * max_q_prime * (1 - dones)
-            loss = F.smooth_l1_loss(q_a, target.detach())
-            agent.optimizer.zero_grad()
-            loss.backward()
-            agent.optimizer.step()
+        if n_epi > 40:
+            train(agent, memory)
             if update_num % target_update_cycle == 0:
                 agent.target_q_network.load_state_dict(agent.q_network.state_dict())
             update_num += 1
