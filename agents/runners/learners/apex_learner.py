@@ -11,4 +11,3 @@ class APEXLearner(Learner):
         idx, td_error = self.algorithm.train_network(data)
         ray.wait([ps.push.remote(self.get_weights())])
         ray.wait([buffer.put_idxs.remote([idx, td_error])])
-            

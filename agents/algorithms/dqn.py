@@ -44,17 +44,16 @@ class DQN(Agent):
         q = self.get_q(state)
         q_action = q.gather(1, action)
         target = reward + (1 - done) * self.args['gamma'] * self.target_q_network(next_state)[0].max(1)[0].unsqueeze(1)
-        
+
         beta = 1
         n = torch.abs(q_action - target.detach())
         cond = n < beta
         loss = torch.where(cond, 0.5 * n**2 / beta, n - 0.5 * beta)
-        
+
         if isinstance(weights, np.ndarray):
-            return torch.tensor(weights) * loss
+            return torch.tensor(weights).to(self.device) * loss
         else :
             return loss
-    
     def get_action(self,x):
         if random.random() < self.epsilon :
             x = random.randint(0, self.action_dim - 1)
@@ -78,6 +77,7 @@ class DQN(Agent):
         next_state = np.vstack(mini_batch[3])
         done = np.vstack(mini_batch[4])
         log_prob = np.zeros((1,1)) ###
+
         data = make_transition(state, action, reward, next_state, done, log_prob)
         td_error = self.get_td_error(data,is_weights.reshape(-1,1))
         self.optimizer.zero_grad()
@@ -87,4 +87,4 @@ class DQN(Agent):
         
         if self.update_num % self.args['target_update_cycle'] == 0:
             self.target_q_network.load_state_dict(self.q_network.state_dict())
-        return idxs, td_error.detach().numpy()
+        return idxs, td_error.detach().cpu().numpy()

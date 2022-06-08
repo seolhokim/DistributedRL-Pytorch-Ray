@@ -21,7 +21,7 @@ class APEXActor(Actor):
             run_env(env, self.algorithm, self.algorithm.device, self.args['traj_length'], True)
             data = self.algorithm.get_trajectories()
             td_error = self.algorithm.get_td_error(data)
-            data['priority'] = td_error.detach().numpy()
+            data['priority'] = td_error.detach().cpu().numpy()
             global_buffer.put_trajectories.remote(data)
             i += 1
         print('actor finish')
